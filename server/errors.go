@@ -11,6 +11,7 @@ var (
 
 	ErrInvalidUUID          = errors.New("server: invalid uuid")
 	ErrMissingDecryptionKey = errors.New("server: missing decryption key")
+	ErrInvalidJWT           = errors.New("server: invalid jwt")
 )
 
 type Error struct {

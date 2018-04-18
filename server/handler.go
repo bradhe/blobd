@@ -56,26 +56,50 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (h Handler) GetBlob(w http.ResponseWriter, r *http.Request) {
-	manager := h.Managers.Blobs()
+type BlobHandler struct {
+	Handler
 
-	// we'll use this to authenticate that we're getting the correct blob
-	blobId := BlobId(r.Context())
+	AuthorizedBlobId uuid.UUID
+	RequestedBlobId  uuid.UUID
+	Key              *crypt.Key
+}
 
-	if id := uuid.Parse(h.Vars["blob_id"]); uuid.Equal(id, uuid.NIL) {
-		log.Printf("server: invalid uuid %v", id)
-		RenderError(w, GetError("internal_server_error"))
+func (h BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	_, claims, err := ParseJWT(r.Header.Get("Authorization"))
+
+	if err != nil {
+		log.Printf("server: failed to get token. %v", err)
+		RenderError(w, GetError("unauthorized"))
 	} else {
-		if !uuid.Equal(blobId, id) {
+		h.Key = claims.Key
+		h.AuthorizedBlobId = claims.BlobId
+
+		id := uuid.Parse(h.Vars["blob_id"])
+
+		if !uuid.Equal(id, h.AuthorizedBlobId) {
+			// Invalid blob, so we can't do anything here.
 			RenderError(w, GetError("unauthorized"))
 		} else {
-			if blob, err := manager.Get(id); err != nil {
-				log.Printf("server: error happened %v", err)
-				RenderError(w, GetError("internal_server_error"))
-			} else {
-				io.Copy(w, crypt.NewDecrypter(DecryptionKey(r.Context()), blob.Body))
+			h.RequestedBlobId = id
+
+			switch r.Method {
+			case "GET":
+				h.GetBlob(w, r)
+			case "PUT":
+				h.PutBlob(w, r)
 			}
 		}
+	}
+}
+
+func (h BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
+	manager := h.Managers.Blobs()
+
+	if blob, err := manager.Get(h.RequestedBlobId); err != nil {
+		log.Printf("server: error happened %v", err)
+		RenderError(w, GetError("internal_server_error"))
+	} else {
+		io.Copy(w, crypt.NewDecrypter(h.Key, blob.Body))
 	}
 }
 
@@ -83,34 +107,22 @@ type PutBlobResponse struct {
 	JWT string `json:"jwt"`
 }
 
-func (h Handler) PutBlob(w http.ResponseWriter, r *http.Request) {
+func (h BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 	manager := h.Managers.Blobs()
 
-	// we'll use this to authenticate that we're getting the correct blob
-	blobId := BlobId(r.Context())
-	key := DecryptionKey(r.Context())
+	blob := blobs.Blob{
+		Id:   h.RequestedBlobId,
+		Body: crypt.NewEncrypter(h.Key, r.Body),
+	}
 
-	if id := uuid.Parse(h.Vars["blob_id"]); uuid.Equal(id, uuid.NIL) {
+	if err := manager.Update(&blob); err != nil {
+		log.Printf("server: update failed %v", err)
 		RenderError(w, GetError("internal_server_error"))
 	} else {
-		if !uuid.Equal(blobId, id) {
-			RenderError(w, GetError("unauthorized"))
-		} else {
-			blob := blobs.Blob{
-				Id:   id,
-				Body: crypt.NewEncrypter(key, r.Body),
-			}
-
-			if err := manager.Update(&blob); err != nil {
-				log.Printf("server: update failed %v", err)
-				RenderError(w, GetError("internal_server_error"))
-			} else {
-				resp := PutBlobResponse{
-					JWT: GenerateJWT(key, &blob),
-				}
-
-				w.Write(Dump(resp))
-			}
+		resp := PutBlobResponse{
+			JWT: GenerateJWT(h.Key, &blob),
 		}
+
+		w.Write(Dump(resp))
 	}
 }
