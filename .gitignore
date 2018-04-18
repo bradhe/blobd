@@ -1,0 +1,6 @@
+# Development artifacts
+*.sw[onp]
+
+# Build artifacts
+/blobd-server
+/cmd/blobd-server/blobd-server
