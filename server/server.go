@@ -45,7 +45,7 @@ func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
 
 	// Unauthenticated...
 	r.HandleFunc("/", h.PostBlob).Methods("POST")
-	r.Handle("/{blob_id}", BlobHandler{Handler: h})
+	r.Handle("/{blob_id}", &BlobHandler{Handler: h})
 
 	// Custom walk of the routes to extract the variables we defined
 	// in the map here. If we can match a route, we'll populate the

@@ -5,10 +5,6 @@ import "fmt"
 import "errors"
 
 var (
-	// Indicates that there was an application error during the
-	// request and the request should be abandoned.
-	ErrAbandonRequest = errors.New("server: abandon request")
-
 	ErrInvalidUUID          = errors.New("server: invalid uuid")
 	ErrMissingDecryptionKey = errors.New("server: missing decryption key")
 	ErrInvalidJWT           = errors.New("server: invalid jwt")

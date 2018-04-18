@@ -64,7 +64,7 @@ type BlobHandler struct {
 	Key              *crypt.Key
 }
 
-func (h BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *BlobHandler) withValidRequest(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) {
 	_, claims, err := ParseJWT(r.Header.Get("Authorization"))
 
 	if err != nil {
@@ -81,18 +81,23 @@ func (h BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			RenderError(w, GetError("unauthorized"))
 		} else {
 			h.RequestedBlobId = id
-
-			switch r.Method {
-			case "GET":
-				h.GetBlob(w, r)
-			case "PUT":
-				h.PutBlob(w, r)
-			}
+			fn(w, r)
 		}
 	}
 }
 
-func (h BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
+func (h *BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.withValidRequest(w, r, func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case "GET":
+			h.GetBlob(w, r)
+		case "PUT":
+			h.PutBlob(w, r)
+		}
+	})
+}
+
+func (h *BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 	manager := h.Managers.Blobs()
 
 	if blob, err := manager.Get(h.RequestedBlobId); err != nil {
@@ -107,7 +112,7 @@ type PutBlobResponse struct {
 	JWT string `json:"jwt"`
 }
 
-func (h BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
+func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 	manager := h.Managers.Blobs()
 
 	blob := blobs.Blob{
