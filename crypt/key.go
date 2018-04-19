@@ -43,3 +43,9 @@ func (k *Key) UnmarshalJSON(buf []byte) error {
 
 	return nil
 }
+
+func (k *Key) Destroy() {
+	for i := range k {
+		k[i] = 0x00
+	}
+}
