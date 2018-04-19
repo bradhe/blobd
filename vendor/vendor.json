@@ -57,6 +57,20 @@
 			"path": "github.com/stretchr/testify/require",
 			"revision": "2aa2c176b9dab406a6970f6a55f513e8a8c8b18f",
 			"revisionTime": "2017-08-14T20:04:35Z"
+		},
+		{
+			"checksumSHA1": "BGm8lKZmvJbf/YOJLeL1rw2WVjA=",
+			"path": "golang.org/x/crypto/ssh/terminal",
+			"revision": "beb2a9779c3b677077c41673505f150149fce895",
+			"revisionTime": "2018-04-05T14:16:06Z",
+			"tree": true
+		},
+		{
+			"checksumSHA1": "CJjRPVUgkcI3KKj3NEZt9DJ1Czw=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "f6f352972f061230a99fbf49d1eb8073ebdb36cb",
+			"revisionTime": "2018-04-11T11:57:14Z",
+			"tree": true
 		}
 	],
 	"rootPath": "github.com/bradhe/blobd"
