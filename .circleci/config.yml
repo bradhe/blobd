@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/bradhe/blobd
     docker:
-      - image: circleci/golang:1.8
+      - image: circleci/golang:1.9
     steps:
       - checkout
       - setup_remote_docker
