@@ -2,9 +2,11 @@ package main
 
 import (
 	"flag"
-	"github.com/bradhe/blobd/server"
+
 	"github.com/reflect/xflag"
-	"log"
+
+	"github.com/bradhe/blobd/logs"
+	"github.com/bradhe/blobd/server"
 )
 
 func main() {
@@ -20,8 +22,8 @@ func main() {
 		StorageURL: *storageURL,
 	}
 
-	log.Printf("starting blobd v%s", Version)
-	log.Printf("listening on addr %s", *listenAddr)
+	logs.WithPackage("main").Printf("starting blobd v%s", Version)
+	logs.WithPackage("main").Printf("listening on addr %s", *listenAddr)
 
 	s := server.New(opts)
 	s.ListenAndServe(*listenAddr)

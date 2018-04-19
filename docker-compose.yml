@@ -1,0 +1,9 @@
+version: '3'
+services:
+  blobd:
+    build: ./cmd/blobd
+    ports:
+      - "5001:5001"
+    command:
+      - "/blobd-server"
+      - "-listen-addr=0.0.0.0:5001"
