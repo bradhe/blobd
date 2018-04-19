@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
-	"github.com/pborman/uuid"
 
 	"github.com/bradhe/blobd/blobs"
 	"github.com/bradhe/blobd/crypt"
@@ -34,16 +33,16 @@ type BlobClaims struct {
 	// Time the claim was generated
 	NBF int64 `json:"nbf"`
 
-	// The UUID for this blob.
-	BlobId uuid.UUID `json:"sub"`
+	// The id for this blob.
+	BlobId blobs.Id `json:"sub"`
 
 	// Key used to encrypt the message.
 	Key *crypt.Key `json:"key"`
 }
 
 func (bc *BlobClaims) Valid() error {
-	if uuid.Equal(bc.BlobId, uuid.NIL) {
-		return ErrInvalidUUID
+	if bc.BlobId.IsEmpty() {
+		return ErrInvalidBlobId
 	}
 
 	if bc.Key == nil {

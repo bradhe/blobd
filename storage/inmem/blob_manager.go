@@ -6,8 +6,6 @@ import (
 	"io"
 	"sync"
 
-	"github.com/pborman/uuid"
-
 	"github.com/bradhe/blobd/blobs"
 	"github.com/bradhe/blobd/storage/managers"
 )
@@ -22,7 +20,7 @@ type BlobManager struct {
 	ctx context.Context
 }
 
-func (bm *BlobManager) Get(id uuid.UUID) (*blobs.Blob, error) {
+func (bm *BlobManager) Get(id blobs.Id) (*blobs.Blob, error) {
 	blobmut.RLock()
 	defer blobmut.RUnlock()
 
@@ -41,7 +39,7 @@ func (bm *BlobManager) Create(blob *blobs.Blob) error {
 	defer blobmut.Unlock()
 
 	// TODO: Validate this doesn't already exist.
-	blob.Id = uuid.NewUUID()
+	blob.Id = blobs.NewId()
 
 	var buf bytes.Buffer
 	io.Copy(&buf, blob.Body)

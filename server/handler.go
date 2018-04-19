@@ -5,8 +5,6 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/pborman/uuid"
-
 	"github.com/bradhe/blobd/blobs"
 	"github.com/bradhe/blobd/crypt"
 	"github.com/bradhe/blobd/storage/managers"
@@ -62,8 +60,8 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 type BlobHandler struct {
 	Handler
 
-	AuthorizedBlobId uuid.UUID
-	RequestedBlobId  uuid.UUID
+	AuthorizedBlobId blobs.Id
+	RequestedBlobId  blobs.Id
 	Key              *crypt.Key
 }
 
@@ -77,13 +75,12 @@ func (h *BlobHandler) withValidRequest(w http.ResponseWriter, r *http.Request, f
 		h.Key = claims.Key
 		h.AuthorizedBlobId = claims.BlobId
 
-		id := uuid.Parse(h.Vars["blob_id"])
-
-		if !uuid.Equal(id, h.AuthorizedBlobId) {
+		if id, err := blobs.ParseId(h.Vars["blob_id"]); err != nil {
 			// Invalid blob, so we can't do anything here.
 			RenderError(w, GetError("unauthorized"))
 		} else {
 			h.RequestedBlobId = id
+
 			fn(w, r)
 		}
 	}

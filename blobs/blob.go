@@ -2,11 +2,9 @@ package blobs
 
 import (
 	"io"
-
-	"github.com/pborman/uuid"
 )
 
 type Blob struct {
-	Id   uuid.UUID
+	Id   Id
 	Body io.Reader
 }

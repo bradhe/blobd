@@ -5,7 +5,7 @@ import "fmt"
 import "errors"
 
 var (
-	ErrInvalidUUID          = errors.New("server: invalid uuid")
+	ErrInvalidBlobId        = errors.New("server: invalid blob id")
 	ErrMissingDecryptionKey = errors.New("server: missing decryption key")
 	ErrInvalidJWT           = errors.New("server: invalid jwt")
 )

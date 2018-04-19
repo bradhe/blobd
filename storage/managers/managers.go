@@ -3,13 +3,11 @@ package managers
 import (
 	"context"
 
-	"github.com/pborman/uuid"
-
 	"github.com/bradhe/blobd/blobs"
 )
 
 type BlobManager interface {
-	Get(uuid.UUID) (*blobs.Blob, error)
+	Get(blobs.Id) (*blobs.Blob, error)
 	Create(*blobs.Blob) error
 	Update(*blobs.Blob) error
 }
