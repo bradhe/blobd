@@ -6,8 +6,14 @@ IMAGE_REPO ?= bradhe
 IMAGE_NAME  = blobd
 IMAGE_TAG  ?= latest
 
+setup:
+	go get -v github.com/kardianos/govendor
+
+clean:
+	rm ./cmd/blobd/blobd
+
 build:
-	$(GO) build -a -o ./cmd/blobd/blobd ./cmd/blobd
+	$(GO) build -o ./cmd/blobd/blobd ./cmd/blobd
 
 test:
 	$(GOVENDOR) test -tags 'integration unit' ./...	
