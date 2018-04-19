@@ -44,7 +44,8 @@ func TestSecureBlobCreation(t *testing.T) {
 
 	dec := json.NewDecoder(w.Body)
 	assert.NoError(t, dec.Decode(&res))
-	assert.NotEmpty(t, res.JWT)
+	assert.NotEmpty(t, res.WritableJWT)
+	assert.NotEmpty(t, res.ReadOnlyJWT)
 
 	// we shouldn't be able to fetch this blob without authentication of some kind.
 	loc := w.HeaderMap.Get("Location")
@@ -57,7 +58,7 @@ func TestSecureBlobCreation(t *testing.T) {
 
 	// if we use the JWT that we got back, we should be OK.
 	r = httptest.NewRequest("GET", loc, nil)
-	r.Header.Set("Authorization", "Bearer "+res.JWT)
+	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
 
 	w = httptest.NewRecorder()
 
@@ -89,7 +90,7 @@ func TestBlobUpdating(t *testing.T) {
 	loc := w.HeaderMap.Get("Location")
 
 	r = httptest.NewRequest("PUT", loc, bytes.NewBuffer(otherBlob))
-	r.Header.Set("Authorization", "Bearer "+res.JWT)
+	r.Header.Set("Authorization", "Bearer "+res.WritableJWT)
 
 	w = httptest.NewRecorder()
 
@@ -101,7 +102,7 @@ func TestBlobUpdating(t *testing.T) {
 	// we should be able to get the blob again, but it should be the updated
 	// version of the blob.
 	r = httptest.NewRequest("GET", loc, nil)
-	r.Header.Set("Authorization", "Bearer "+res.JWT)
+	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
 
 	w = httptest.NewRecorder()
 
@@ -142,7 +143,7 @@ func TestInvalidJWTDuringUpdate(t *testing.T) {
 	r = httptest.NewRequest("PUT", loc, bytes.NewBuffer(blob))
 
 	// this is the wrong JWT--it's the JWT from the *first* request.
-	r.Header.Set("Authorization", "Bearer "+res.JWT)
+	r.Header.Set("Authorization", "Bearer "+res.WritableJWT)
 
 	w = httptest.NewRecorder()
 
@@ -182,7 +183,7 @@ func TestInvalidJWTDuringGet(t *testing.T) {
 	r = httptest.NewRequest("GET", loc, nil)
 
 	// this is the wrong JWT--it's the JWT from the *first* request.
-	r.Header.Set("Authorization", "Bearer "+res.JWT)
+	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
 
 	w = httptest.NewRecorder()
 

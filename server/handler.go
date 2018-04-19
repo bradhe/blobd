@@ -24,7 +24,8 @@ type Handler struct {
 }
 
 type PostBlobResponse struct {
-	JWT string `json:"jwt"`
+	WritableJWT string `json:"write_jwt"`
+	ReadOnlyJWT string `json:"read_jwt"`
 }
 
 func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
@@ -35,6 +36,8 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		RenderError(w, GetError("internal_server_error"))
 	} else {
+		defer key.Destroy()
+
 		manager := h.Managers.Blobs()
 
 		// TODO: Validate this is JSON on the way in.
@@ -46,7 +49,8 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 			RenderError(w, GetError("internal_server_error"))
 		} else {
 			resp := PostBlobResponse{
-				JWT: GenerateJWT(key, &blob),
+				ReadOnlyJWT: GenerateJWT(ReadOnlyToken, key, &blob),
+				WritableJWT: GenerateJWT(WritableToken, key, &blob),
 			}
 
 			http.Redirect(w, r, BlobPath(&blob), http.StatusFound)
@@ -97,6 +101,8 @@ func (h *BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
+	defer h.Key.Destroy()
+
 	manager := h.Managers.Blobs()
 
 	if blob, err := manager.Get(h.RequestedBlobId); err != nil {
@@ -108,10 +114,13 @@ func (h *BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 }
 
 type PutBlobResponse struct {
-	JWT string `json:"jwt"`
+	ReadOnlyJWT string `json:"read_jwt"`
+	WritableJWT string `json:"write_jwt"`
 }
 
 func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
+	defer h.Key.Destroy()
+
 	manager := h.Managers.Blobs()
 
 	blob := blobs.Blob{
@@ -124,7 +133,8 @@ func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 		RenderError(w, GetError("internal_server_error"))
 	} else {
 		resp := PutBlobResponse{
-			JWT: GenerateJWT(h.Key, &blob),
+			ReadOnlyJWT: GenerateJWT(ReadOnlyToken, h.Key, &blob),
+			WritableJWT: GenerateJWT(WritableToken, h.Key, &blob),
 		}
 
 		w.Write(Dump(resp))
