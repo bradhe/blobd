@@ -69,8 +69,47 @@ func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
 	return r
 }
 
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	StatusCode int
+	Bytes      int64
+}
+
+func (w *loggingResponseWriter) WriteHeader(code int) {
+	w.StatusCode = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func (w *loggingResponseWriter) Write(buf []byte) (int, error) {
+	n, err := w.ResponseWriter.Write(buf)
+	w.Bytes += int64(n)
+	return n, err
+}
+
+func newLoggingResponseWriter(base http.ResponseWriter) *loggingResponseWriter {
+	return &loggingResponseWriter{base, 0, 0}
+}
+
+func bytes(arr ...int64) uint64 {
+	var acc uint64
+
+	for _, b := range arr {
+		if b > 0 {
+			acc += uint64(b)
+		}
+	}
+
+	return acc
+}
+
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	s.getMux(r.Context(), r).ServeHTTP(w, r)
+	wrapper := newLoggingResponseWriter(w)
+	s.getMux(r.Context(), r).ServeHTTP(wrapper, r)
+
+	log.WithFields(map[string]interface{}{
+		"status": wrapper.StatusCode,
+		"bytes":  bytes(wrapper.Bytes, r.ContentLength),
+	}).Infof("served %s to %s", r.Method, r.RemoteAddr)
 }
 
 func (s *Server) ListenAndServe(addr string) {

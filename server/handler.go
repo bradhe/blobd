@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/pborman/uuid"
