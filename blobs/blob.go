@@ -1,8 +1,9 @@
 package blobs
 
 import (
-	"io"
 	"time"
+
+	"github.com/bradhe/blobd/iox"
 )
 
 // Default window of time that an object is valid in the context of our body.
@@ -18,8 +19,8 @@ func DefaultExpirationFromNow() time.Time {
 
 type Blob struct {
 	Id        Id
-	Body      io.Reader
-	MediaType string
+	Body      iox.ContentReader
+	MediaType []byte
 	ExpiresAt time.Time
 }
 

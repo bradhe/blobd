@@ -5,6 +5,8 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"io"
+
+	"github.com/bradhe/blobd/iox"
 )
 
 type Encrypter struct {
@@ -72,7 +74,11 @@ ReadDone:
 	return cum, nil
 }
 
-func NewEncrypter(key *Key, r io.Reader) io.ReadCloser {
+func (e *Encrypter) ContentType() string {
+	return "application/octet-stream"
+}
+
+func NewEncrypter(key *Key, r io.Reader) iox.ContentReader {
 	block, _ := aes.NewCipher(key.Bytes())
 
 	var buf bytes.Buffer

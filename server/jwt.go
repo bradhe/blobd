@@ -43,7 +43,7 @@ type BlobClaims struct {
 	Key *crypt.Key `json:"key"`
 
 	// Expected media type of the content in storage.
-	MediaType string `json:"media_type"`
+	MediaType []byte `json:"media_type"`
 }
 
 func (bc *BlobClaims) IsReadable() bool {
@@ -52,6 +52,17 @@ func (bc *BlobClaims) IsReadable() bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func (bc *BlobClaims) Destroy() {
+	if bc.Key != nil {
+		bc.Key.Destroy()
+	}
+
+	// Wipe other content out of here.
+	for i := range bc.MediaType {
+		bc.MediaType[i] = 0x00
 	}
 }
 

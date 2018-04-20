@@ -41,10 +41,11 @@ func BlobPath(blob *blobs.Blob) string {
 	return "/" + blob.Id.String()
 }
 
-func requestContentType(req *http.Request) string {
+func requestContentType(req *http.Request) []byte {
+	// TODO: How to securely destory this content?
 	if t := req.Header.Get("Content-Type"); t != "" {
-		return t
+		return []byte(t)
 	}
 
-	return "application/octet-stream"
+	return []byte("application/octet-stream")
 }

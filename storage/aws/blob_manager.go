@@ -10,6 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/bradhe/blobd/blobs"
+	"github.com/bradhe/blobd/iox"
 	"github.com/bradhe/blobd/storage/managers"
 )
 
@@ -47,7 +48,17 @@ func (bm *BlobManager) download(blob *blobs.Blob) error {
 		return err
 	}
 
-	blob.Body = resp.Body
+	// This indicates what media type was originally presented to S3 by our
+	// stack. Typically, it's encrypted data.
+	var mediaType string
+
+	if resp.ContentType != nil {
+		mediaType = *resp.ContentType
+	} else {
+		mediaType = "application/octet-stream"
+	}
+
+	blob.Body = iox.MakeContentReader(mediaType, resp.Body)
 
 	// AWS uses the Expires field to track the expiration of the object. The
 	// format conforms to RFC1123. This is based on anecdotal (e.g. testing)
@@ -76,10 +87,11 @@ func (bm *BlobManager) upload(blob *blobs.Blob) error {
 
 	// we use a slighlty
 	_, err := svc.Upload(&s3manager.UploadInput{
-		Body:    blob.Body,
-		Bucket:  baseaws.String(bm.bucket),
-		Key:     baseaws.String(bm.path(blob.Id)),
-		Expires: baseaws.Time(exp),
+		Body:        blob.Body,
+		Bucket:      baseaws.String(bm.bucket),
+		Key:         baseaws.String(bm.path(blob.Id)),
+		Expires:     baseaws.Time(exp),
+		ContentType: baseaws.String(blob.Body.ContentType()),
 	})
 
 	return err

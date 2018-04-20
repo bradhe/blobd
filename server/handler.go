@@ -67,7 +67,8 @@ type BlobHandler struct {
 
 	AuthorizedBlobId blobs.Id
 	RequestedBlobId  blobs.Id
-	Key              *crypt.Key
+
+	Claims *BlobClaims
 }
 
 type authenticatedHandlerFunc = func(claims *BlobClaims, w http.ResponseWriter, r *http.Request)
@@ -75,14 +76,16 @@ type authenticatedHandlerFunc = func(claims *BlobClaims, w http.ResponseWriter, 
 func (h *BlobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Request, fn authenticatedHandlerFunc) {
 	_, claims, err := ParseJWT(r.Header.Get("Authorization"))
 
+	if claims != nil {
+		defer claims.Destroy()
+	}
+
 	if err != nil {
 		log.WithError(err).Error("failed to parse token")
 		RenderError(w, GetError("unauthorized"))
 	} else {
-		defer claims.Key.Destroy()
-
-		h.Key = claims.Key
 		h.AuthorizedBlobId = claims.BlobId
+		h.Claims = claims
 
 		if id, err := blobs.ParseId(h.Vars["blob_id"]); err != nil {
 			// Invalid blob, so we can't do anything here.
@@ -124,7 +127,8 @@ func (h *BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 		log.WithError(err).Error("failed to get blob")
 		RenderError(w, GetError("internal_server_error"))
 	} else {
-		io.Copy(w, crypt.NewDecrypter(h.Key, blob.Body))
+		w.Header().Set("Content-Type", string(h.Claims.MediaType))
+		io.Copy(w, crypt.NewDecrypter(h.Claims.Key, blob.Body))
 	}
 }
 
@@ -138,7 +142,7 @@ func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 
 	blob := blobs.Blob{
 		Id:   h.RequestedBlobId,
-		Body: crypt.NewEncrypter(h.Key, r.Body),
+		Body: crypt.NewEncrypter(h.Claims.Key, r.Body),
 	}
 
 	if err := manager.Update(&blob); err != nil {
@@ -146,8 +150,8 @@ func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 		RenderError(w, GetError("internal_server_error"))
 	} else {
 		resp := PutBlobResponse{
-			ReadOnlyJWT: GenerateJWT(ReadOnlyToken, h.Key, &blob),
-			WritableJWT: GenerateJWT(WritableToken, h.Key, &blob),
+			ReadOnlyJWT: GenerateJWT(ReadOnlyToken, h.Claims.Key, &blob),
+			WritableJWT: GenerateJWT(WritableToken, h.Claims.Key, &blob),
 		}
 
 		RenderJSON(w, resp)

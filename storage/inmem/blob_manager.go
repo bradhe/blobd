@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/bradhe/blobd/blobs"
+	"github.com/bradhe/blobd/iox"
 	"github.com/bradhe/blobd/storage/managers"
 )
 
@@ -27,7 +28,7 @@ func (bm *BlobManager) Get(id blobs.Id) (*blobs.Blob, error) {
 	if buf, ok := blobstore[id.String()]; ok {
 		return &blobs.Blob{
 			Id:   id,
-			Body: &buf,
+			Body: iox.MakeContentReader("application/octet-stream", &buf),
 		}, nil
 	}
 
