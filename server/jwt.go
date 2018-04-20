@@ -33,6 +33,9 @@ type BlobClaims struct {
 	// Time the claim was generated
 	NBF int64 `json:"nbf"`
 
+	// Time this claim will expire
+	EXP int64 `json:"exp"`
+
 	// The id for this blob.
 	BlobId blobs.Id `json:"sub"`
 
@@ -69,9 +72,17 @@ func (bc *BlobClaims) Valid() error {
 		return ErrMissingDecryptionKey
 	}
 
+	t := now()
+
 	// we don't use >= because if the JWT was created and then immediately used,
 	// that's valid. specifically in tests.
-	if bc.NBF > now() {
+	if bc.NBF > t {
+		return ErrInvalidJWT
+	}
+
+	// operator matters less here as default expiration window is pretty far in
+	// the future.
+	if bc.EXP < t {
 		return ErrInvalidJWT
 	}
 
@@ -90,13 +101,14 @@ func GetJWT(str string) string {
 }
 
 var now = func() int64 {
-	return time.Now().Unix()
+	return time.Now().UTC().Unix()
 }
 
 func GenerateJWT(t TokenType, key *crypt.Key, blob *blobs.Blob) string {
 	claims := &BlobClaims{
 		Type:   t,
 		NBF:    now(),
+		EXP:    blob.Expiration().Unix(),
 		BlobId: blob.Id,
 		Key:    key,
 	}

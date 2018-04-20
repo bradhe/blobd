@@ -11,7 +11,10 @@ import (
 const DefaultAWSRegion = "us-east-1"
 
 var (
-	defaultSession        = session.Must(session.NewSession(baseaws.NewConfig()))
+	// Default (mostly unconfigured) session to use with the default metadata client.
+	defaultSession = session.Must(session.NewSession(baseaws.NewConfig()))
+
+	// Default metadata client to use when fetching the default credentials.
 	defaultMetadataClient = ec2metadata.New(defaultSession)
 
 	defaultCredentials = credentials.NewChainCredentials(
@@ -21,11 +24,6 @@ var (
 			},
 			&credentials.EnvProvider{},
 		})
-
-	defaultConfig = baseaws.NewConfig().
-			WithRegion(getAWSRegion()).
-			WithMaxRetries(3).
-			WithCredentials(defaultCredentials)
 )
 
 func getAWSRegion() string {
@@ -36,6 +34,11 @@ func getAWSRegion() string {
 	}
 }
 
-func getAWSSession() *session.Session {
-	return session.Must(session.NewSession(defaultConfig))
+func newAWSSession() *session.Session {
+	config := baseaws.NewConfig().
+		WithRegion(getAWSRegion()).
+		WithMaxRetries(3).
+		WithCredentials(defaultCredentials)
+
+	return session.Must(session.NewSession(config))
 }

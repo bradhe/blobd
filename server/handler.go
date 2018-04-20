@@ -41,7 +41,8 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 
 		// TODO: Validate this is JSON on the way in.
 		blob := blobs.Blob{
-			Body: crypt.NewEncrypter(key, r.Body),
+			Body:      crypt.NewEncrypter(key, r.Body),
+			ExpiresAt: blobs.DefaultExpirationFromNow(),
 		}
 
 		if err := manager.Create(&blob); err != nil {
@@ -67,15 +68,17 @@ type BlobHandler struct {
 	Key              *crypt.Key
 }
 
-type AuthenticatedHandlerFunc = func(claims *BlobClaims, w http.ResponseWriter, r *http.Request)
+type authenticatedHandlerFunc = func(claims *BlobClaims, w http.ResponseWriter, r *http.Request)
 
-func (h *BlobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Request, fn AuthenticatedHandlerFunc) {
+func (h *BlobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Request, fn authenticatedHandlerFunc) {
 	_, claims, err := ParseJWT(r.Header.Get("Authorization"))
 
 	if err != nil {
 		log.WithError(err).Error("failed to parse token")
 		RenderError(w, GetError("unauthorized"))
 	} else {
+		defer claims.Key.Destroy()
+
 		h.Key = claims.Key
 		h.AuthorizedBlobId = claims.BlobId
 
@@ -113,8 +116,6 @@ func (h *BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
-	defer h.Key.Destroy()
-
 	manager := h.Managers.Blobs()
 
 	if blob, err := manager.Get(h.RequestedBlobId); err != nil {
@@ -131,8 +132,6 @@ type PutBlobResponse struct {
 }
 
 func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
-	defer h.Key.Destroy()
-
 	manager := h.Managers.Blobs()
 
 	blob := blobs.Blob{
@@ -141,7 +140,7 @@ func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := manager.Update(&blob); err != nil {
-		log.Printf("server: update failed %v", err)
+		log.WithError(err).Error("update failed")
 		RenderError(w, GetError("internal_server_error"))
 	} else {
 		resp := PutBlobResponse{

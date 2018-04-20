@@ -3,12 +3,14 @@ package aws
 import (
 	"context"
 	"strings"
+	"time"
 
 	baseaws "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
 	"github.com/bradhe/blobd/blobs"
+	"github.com/bradhe/blobd/storage/managers"
 )
 
 type BlobManager struct {
@@ -33,7 +35,7 @@ func (bm *BlobManager) path(id blobs.Id) string {
 }
 
 func (bm *BlobManager) download(blob *blobs.Blob) error {
-	sess := getAWSSession()
+	sess := newAWSSession()
 	svc := s3.New(sess)
 
 	resp, err := svc.GetObject(&s3.GetObjectInput{
@@ -46,18 +48,38 @@ func (bm *BlobManager) download(blob *blobs.Blob) error {
 	}
 
 	blob.Body = resp.Body
+
+	// AWS uses the Expires field to track the expiration of the object. The
+	// format conforms to RFC1123. This is based on anecdotal (e.g. testing)
+	// evidence and I couldn't find anything in the docs to support it.
+	if resp.Expires != nil {
+		if t, err := time.Parse(time.RFC1123, *resp.Expires); err == nil {
+			blob.ExpiresAt = t
+		} else {
+			log.WithError(err).Error("failed to parse expiration from Amazon")
+		}
+	}
+
 	return nil
 }
 
 func (bm *BlobManager) upload(blob *blobs.Blob) error {
-	sess := getAWSSession()
+	sess := newAWSSession()
 	svc := s3manager.NewUploader(sess)
+
+	// this should technically be handled by other stuff in the stack but...
+	exp := blob.Expiration()
+
+	if exp.Before(time.Now()) {
+		return managers.ErrInvalidExpiration
+	}
 
 	// we use a slighlty
 	_, err := svc.Upload(&s3manager.UploadInput{
-		Body:   blob.Body,
-		Bucket: baseaws.String(bm.bucket),
-		Key:    baseaws.String(bm.path(blob.Id)),
+		Body:    blob.Body,
+		Bucket:  baseaws.String(bm.bucket),
+		Key:     baseaws.String(bm.path(blob.Id)),
+		Expires: baseaws.Time(exp),
 	})
 
 	return err
