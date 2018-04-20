@@ -41,6 +41,9 @@ type BlobClaims struct {
 
 	// Key used to encrypt the message.
 	Key *crypt.Key `json:"key"`
+
+	// Expected media type of the content in storage.
+	MediaType string `json:"media_type"`
 }
 
 func (bc *BlobClaims) IsReadable() bool {
@@ -106,11 +109,12 @@ var now = func() int64 {
 
 func GenerateJWT(t TokenType, key *crypt.Key, blob *blobs.Blob) string {
 	claims := &BlobClaims{
-		Type:   t,
-		NBF:    now(),
-		EXP:    blob.Expiration().Unix(),
-		BlobId: blob.Id,
-		Key:    key,
+		Type:      t,
+		NBF:       now(),
+		EXP:       blob.Expiration().Unix(),
+		BlobId:    blob.Id,
+		Key:       key,
+		MediaType: blob.MediaType,
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

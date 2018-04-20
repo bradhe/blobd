@@ -27,6 +27,8 @@ type PostBlobResponse struct {
 }
 
 func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
+	// always close the body when we're done with it otherwise we end up with a
+	// bunch of open handles over time.
 	defer r.Body.Close()
 
 	key, err := crypt.NewRandomKey()
@@ -43,6 +45,7 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 		blob := blobs.Blob{
 			Body:      crypt.NewEncrypter(key, r.Body),
 			ExpiresAt: blobs.DefaultExpirationFromNow(),
+			MediaType: requestContentType(r),
 		}
 
 		if err := manager.Create(&blob); err != nil {
@@ -54,8 +57,7 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 				WritableJWT: GenerateJWT(WritableToken, key, &blob),
 			}
 
-			http.Redirect(w, r, BlobPath(&blob), http.StatusFound)
-			w.Write(Dump(resp))
+			RenderRedirectedJSON(w, BlobPath(&blob), resp)
 		}
 	}
 }
@@ -148,6 +150,6 @@ func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 			WritableJWT: GenerateJWT(WritableToken, h.Key, &blob),
 		}
 
-		w.Write(Dump(resp))
+		RenderJSON(w, resp)
 	}
 }
