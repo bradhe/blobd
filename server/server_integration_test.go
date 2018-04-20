@@ -151,6 +151,39 @@ func TestInvalidJWTDuringUpdate(t *testing.T) {
 	assert.Equal(t, w.Code, http.StatusUnauthorized)
 }
 
+func TestReadOnlyJWTDuringUpdate(t *testing.T) {
+	blob := randomBlob(4096)
+	otherBlob := randomBlob(2048)
+	require.NotEqual(t, blob, otherBlob)
+
+	// TODO: Default behavior is to use inmem storage...what if that changes?
+	s := server.New(server.ServerOptions{})
+
+	r := httptest.NewRequest("POST", "/", bytes.NewBuffer(blob))
+	w := httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, w.Code, http.StatusFound)
+
+	loc := w.HeaderMap.Get("Location")
+
+	// The response should contain a valid JWT.
+	var res server.PostBlobResponse
+
+	dec := json.NewDecoder(w.Body)
+	assert.NoError(t, dec.Decode(&res))
+
+	r = httptest.NewRequest("PUT", loc, bytes.NewBuffer(blob))
+
+	// this is the wrong JWT--it's the JWT from the *first* request.
+	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
+
+	w = httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, w.Code, http.StatusUnauthorized)
+}
+
 func TestInvalidJWTDuringGet(t *testing.T) {
 	blob := randomBlob(4096)
 	otherBlob := randomBlob(2048)
