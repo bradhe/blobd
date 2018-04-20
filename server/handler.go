@@ -78,6 +78,9 @@ func (h *BlobHandler) withValidRequest(w http.ResponseWriter, r *http.Request, f
 		if id, err := blobs.ParseId(h.Vars["blob_id"]); err != nil {
 			// Invalid blob, so we can't do anything here.
 			RenderError(w, GetError("unauthorized"))
+		} else if !h.AuthorizedBlobId.Equal(id) {
+			// Invalid blob, so we can't do anything here.
+			RenderError(w, GetError("unauthorized"))
 		} else {
 			h.RequestedBlobId = id
 
