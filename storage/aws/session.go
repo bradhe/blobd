@@ -19,17 +19,27 @@ var (
 
 	defaultCredentials = credentials.NewChainCredentials(
 		[]credentials.Provider{
+			&credentials.EnvProvider{},
 			&ec2rolecreds.EC2RoleProvider{
 				Client: defaultMetadataClient,
 			},
-			&credentials.EnvProvider{},
 		})
 )
 
+var knownRegion = ""
+
 func getAWSRegion() string {
+	// we just cache the region info so we don't have to look it up every damn
+	// time.
+	if knownRegion != "" {
+		return knownRegion
+	}
+
 	if region, err := defaultMetadataClient.Region(); err == nil {
+		knownRegion = DefaultAWSRegion
 		return DefaultAWSRegion
 	} else {
+		knownRegion = region
 		return region
 	}
 }
