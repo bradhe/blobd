@@ -15,10 +15,13 @@ clean:
 build:
 	$(GO) build -o ./cmd/blobd/blobd ./cmd/blobd
 
+build_linux:
+	GOOS=linux GOARCH=amd64 $(GO) build -o ./cmd/blobd/blobd ./cmd/blobd
+
 test:
 	$(GOVENDOR) test -tags 'integration unit' ./...	
 
-images: build
+images: build_linux
 	$(DOCKER) build -t $(IMAGE_REPO)/$(IMAGE_NAME):$(IMAGE_TAG) ./cmd/blobd
 
 release: images
