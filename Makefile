@@ -1,6 +1,6 @@
 GO 			 ?= /usr/local/go/bin/go
 GOVENDOR ?= $(GOPATH)/bin/govendor
-DOCKER 	 ?= /usr/local/bin/docker
+DOCKER 	 ?= docker
 
 IMAGE_REPO ?= bradhe
 IMAGE_NAME  = blobd
