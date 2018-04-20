@@ -40,6 +40,26 @@ type BlobClaims struct {
 	Key *crypt.Key `json:"key"`
 }
 
+func (bc *BlobClaims) IsReadable() bool {
+	switch bc.Type {
+	case ReadOnlyToken, WritableToken:
+		return true
+	default:
+		return false
+	}
+}
+
+func (bc *BlobClaims) IsWritable() bool {
+	switch bc.Type {
+	case ReadOnlyToken:
+		return false
+	case WritableToken:
+		return true
+	default:
+		return false
+	}
+}
+
 func (bc *BlobClaims) Valid() error {
 	if bc.BlobId.IsEmpty() {
 		return ErrInvalidBlobId

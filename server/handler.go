@@ -32,6 +32,7 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 	key, err := crypt.NewRandomKey()
 
 	if err != nil {
+		log.WithError(err).Error("failed to generate key")
 		RenderError(w, GetError("internal_server_error"))
 	} else {
 		defer key.Destroy()
@@ -44,6 +45,7 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if err := manager.Create(&blob); err != nil {
+			log.WithError(err).Error("failed to create blob")
 			RenderError(w, GetError("internal_server_error"))
 		} else {
 			resp := PostBlobResponse{
@@ -65,11 +67,13 @@ type BlobHandler struct {
 	Key              *crypt.Key
 }
 
-func (h *BlobHandler) withValidRequest(w http.ResponseWriter, r *http.Request, fn http.HandlerFunc) {
+type AuthenticatedHandlerFunc = func(claims *BlobClaims, w http.ResponseWriter, r *http.Request)
+
+func (h *BlobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Request, fn AuthenticatedHandlerFunc) {
 	_, claims, err := ParseJWT(r.Header.Get("Authorization"))
 
 	if err != nil {
-		log.Printf("server: failed to get token. %v", err)
+		log.WithError(err).Error("failed to parse token")
 		RenderError(w, GetError("unauthorized"))
 	} else {
 		h.Key = claims.Key
@@ -84,18 +88,26 @@ func (h *BlobHandler) withValidRequest(w http.ResponseWriter, r *http.Request, f
 		} else {
 			h.RequestedBlobId = id
 
-			fn(w, r)
+			fn(claims, w, r)
 		}
 	}
 }
 
 func (h *BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.withValidRequest(w, r, func(w http.ResponseWriter, r *http.Request) {
+	h.withAuthenticatedRequest(w, r, func(claims *BlobClaims, w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
-			h.GetBlob(w, r)
+			if claims.IsReadable() {
+				h.GetBlob(w, r)
+			} else {
+				RenderError(w, GetError("unauthorized"))
+			}
 		case "PUT":
-			h.PutBlob(w, r)
+			if claims.IsWritable() {
+				h.PutBlob(w, r)
+			} else {
+				RenderError(w, GetError("unauthorized"))
+			}
 		}
 	})
 }
@@ -106,7 +118,7 @@ func (h *BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 	manager := h.Managers.Blobs()
 
 	if blob, err := manager.Get(h.RequestedBlobId); err != nil {
-		log.Printf("server: error happened %v", err)
+		log.WithError(err).Error("failed to get blob")
 		RenderError(w, GetError("internal_server_error"))
 	} else {
 		io.Copy(w, crypt.NewDecrypter(h.Key, blob.Body))

@@ -30,6 +30,10 @@ func (l *logrusLogger) WithFields(fields map[string]interface{}) Entry {
 	return l.Entry().WithFields(fields)
 }
 
+func (l *logrusLogger) WithError(err error) Entry {
+	return l.Entry().WithFields(logrus.Fields{"error": err})
+}
+
 func (l *logrusLogger) WithPackage(pkg string) Logger {
 	cp := l.clone()
 	cp.pkg = pkg
