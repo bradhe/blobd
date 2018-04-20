@@ -81,6 +81,11 @@ func (w *loggingResponseWriter) WriteHeader(code int) {
 }
 
 func (w *loggingResponseWriter) Write(buf []byte) (int, error) {
+	// this is the implicit status code unless one has been explicitly written.
+	if w.StatusCode == 0 {
+		w.StatusCode = http.StatusOK
+	}
+
 	n, err := w.ResponseWriter.Write(buf)
 	w.Bytes += int64(n)
 	return n, err
