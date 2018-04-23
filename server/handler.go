@@ -22,8 +22,33 @@ type Handler struct {
 }
 
 type PostBlobResponse struct {
+	Id          string `json:"blob_id"`
 	WritableJWT string `json:"write_jwt"`
 	ReadOnlyJWT string `json:"read_jwt"`
+}
+
+func (h Handler) upload(key *crypt.Key, r *http.Request) (*blobs.Blob, error) {
+	reader := newRequestReader(r)
+
+	log.WithFields(map[string]interface{}{
+		"mediatype": reader.ContentType(),
+	}).Debugf("uploading file")
+
+	manager := h.Managers.Blobs()
+
+	// TODO: Validate this is JSON on the way in.
+	blob := blobs.Blob{
+		Body:      crypt.NewEncrypter(key, reader),
+		ExpiresAt: blobs.DefaultExpirationFromNow(),
+		MediaType: reader.ContentType(),
+	}
+
+	if err := manager.Create(&blob); err != nil {
+		log.WithError(err).Error("failed to create blob")
+		return nil, err
+	} else {
+		return &blob, nil
+	}
 }
 
 func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
@@ -34,30 +59,22 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 	key, err := crypt.NewRandomKey()
 
 	if err != nil {
-		log.WithError(err).Error("failed to generate key")
+		log.WithError(err).Error("key generation failed")
 		RenderError(w, GetError("internal_server_error"))
 	} else {
 		defer key.Destroy()
 
-		manager := h.Managers.Blobs()
-
-		// TODO: Validate this is JSON on the way in.
-		blob := blobs.Blob{
-			Body:      crypt.NewEncrypter(key, r.Body),
-			ExpiresAt: blobs.DefaultExpirationFromNow(),
-			MediaType: requestContentType(r),
-		}
-
-		if err := manager.Create(&blob); err != nil {
-			log.WithError(err).Error("failed to create blob")
+		if blob, err := h.upload(key, r); err != nil {
+			log.WithError(err).Error("failed to upload request content")
 			RenderError(w, GetError("internal_server_error"))
 		} else {
 			resp := PostBlobResponse{
-				ReadOnlyJWT: GenerateJWT(ReadOnlyToken, key, &blob),
-				WritableJWT: GenerateJWT(WritableToken, key, &blob),
+				Id:          blob.Id.String(),
+				ReadOnlyJWT: GenerateJWT(ReadOnlyToken, key, blob),
+				WritableJWT: GenerateJWT(WritableToken, key, blob),
 			}
 
-			RenderRedirectedJSON(w, BlobPath(&blob), resp)
+			RenderJSON(w, resp)
 		}
 	}
 }

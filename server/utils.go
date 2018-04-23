@@ -3,8 +3,6 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-
-	"github.com/bradhe/blobd/blobs"
 )
 
 func Dump(v interface{}) []byte {
@@ -21,13 +19,6 @@ func RenderJSON(w http.ResponseWriter, v interface{}) {
 	w.Write(Dump(v))
 }
 
-func RenderRedirectedJSON(w http.ResponseWriter, path string, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Location", path)
-	w.WriteHeader(http.StatusFound)
-	w.Write(Dump(v))
-}
-
 func DumpString(v interface{}) string {
 	return string(Dump(v))
 }
@@ -37,15 +28,11 @@ func RenderError(w http.ResponseWriter, err Error) {
 	RenderJSON(w, err)
 }
 
-func BlobPath(blob *blobs.Blob) string {
-	return "/" + blob.Id.String()
-}
-
-func requestContentType(req *http.Request) []byte {
+func requestContentType(req *http.Request) string {
 	// TODO: How to securely destory this content?
 	if t := req.Header.Get("Content-Type"); t != "" {
-		return []byte(t)
+		return t
 	}
 
-	return []byte("application/octet-stream")
+	return "application/octet-stream"
 }

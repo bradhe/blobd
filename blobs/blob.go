@@ -20,7 +20,7 @@ func DefaultExpirationFromNow() time.Time {
 type Blob struct {
 	Id        Id
 	Body      iox.ContentReader
-	MediaType []byte
+	MediaType string
 	ExpiresAt time.Time
 }
 
