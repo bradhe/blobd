@@ -1,0 +1,34 @@
+{
+  "name": "blobd-ui",
+  "version": "1.0.0",
+  "description": "UI for the blobd service.",
+  "dependencies": {
+    "bluebird": "^3.5.1",
+    "debounce": "^1.1.0",
+    "material-ui": "^0.20.0",
+    "react": "^16.2.0",
+    "react-dom": "^16.2.0",
+    "react-redux": "^5.0.6",
+    "react-scripts": "1.0.17",
+    "react-tap-event-plugin": "^3.0.2",
+    "redux": "^3.7.2",
+    "superagent": "^3.8.2"
+  },
+  "scripts": {
+    "watch-bootstrap": "node-sass --watch --output=./src src/bootstrap.scss",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test --env=jsdom",
+    "eject": "react-scripts eject"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bradhe/blobd.git"
+  },
+  "author": "Brad Heller",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bradhe/blobd/issues"
+  },
+  "homepage": "."
+}

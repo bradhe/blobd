@@ -5,8 +5,10 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/bradhe/stopwatch"
 	"github.com/gorilla/mux"
 
+	"github.com/bradhe/blobd/server/ui"
 	"github.com/bradhe/blobd/storage"
 	"github.com/bradhe/blobd/storage/managers"
 )
@@ -46,6 +48,21 @@ func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
 	// Unauthenticated...
 	r.HandleFunc("/", h.PostBlob).Methods("POST")
 	r.Handle("/{blob_id}", &BlobHandler{Handler: h})
+
+	// We'll
+	assets := ui.Paths()
+
+	for _, asset := range assets {
+		r.HandleFunc(asset, ui.ServeAsset(asset)).Methods("GET")
+	}
+
+	// The default UI path is under /ui/
+	r.HandleFunc("/ui/", ui.ServeAsset("/index.html")).Methods("GET")
+
+	// For convenience do a redirect to /ui if ther GET /
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/ui/", http.StatusFound)
+	})
 
 	// Custom walk of the routes to extract the variables we defined
 	// in the map here. If we can match a route, we'll populate the
@@ -108,12 +125,15 @@ func bytes(arr ...int64) uint64 {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	start := stopwatch.Start()
 	wrapper := newLoggingResponseWriter(w)
 	s.getMux(r.Context(), r).ServeHTTP(wrapper, r)
+	stop := stopwatch.Stop(start)
 
 	log.WithFields(map[string]interface{}{
 		"status": wrapper.StatusCode,
 		"bytes":  bytes(wrapper.Bytes, r.ContentLength),
+		"time":   fmt.Sprintf("%v", stop),
 	}).Infof("served %s to %s", r.Method, r.RemoteAddr)
 }
 

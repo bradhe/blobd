@@ -1,6 +1,10 @@
 # Development artifacts
 *.sw[onp]
+/server/ui/node_modules
+/server/ui/package-lock.json
 
 # Build artifacts
 /blobd
 /cmd/blobd/blobd
+/server/ui/ui.gen.go
+/server/ui/build/
