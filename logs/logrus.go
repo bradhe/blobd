@@ -6,6 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var logger = logrus.New()
+
 type logrusLogger struct {
 	base *logrus.Logger
 	ctx  context.Context
