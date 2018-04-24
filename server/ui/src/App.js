@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import './App.css';
 import Uploader from './Uploader.js';
+import BlobList from './BlobList.js';
 import { MuiThemeProvider, getMuiTheme } from 'material-ui/styles';
 import { fullBlack, white, purple500, grey800, deepPurpleA700, deepPurpleA200, deepPurple500, deepPurple300, deepPurple200, deepPurple100 } from 'material-ui/styles/colors'
 
@@ -19,7 +20,7 @@ class App extends Component {
         accent3Color: deepPurpleA700,
 	textColor: grey800,
 	alternateTextColor: white,
-	canvasColor: deepPurple500,
+	canvasColor: white,
 	borderColor: deepPurple200,
 	disabledColor: deepPurple100,
 	pickerHeaderColor: deepPurpleA700,
@@ -35,7 +36,8 @@ class App extends Component {
       <MuiThemeProvider muiTheme={this.muiTheme}>
         <div className="App">
           <main className="blobd-container">
-            <Uploader {...this.props.upload} />
+            <Uploader />
+            <BlobList />
           </main>
         </div>
       </MuiThemeProvider>
@@ -44,9 +46,7 @@ class App extends Component {
 }
 
 const mapStateToProps = (state, ownProps) => {
-  return {
-    upload: state.upload,
-  }
+  return {}
 };
 
 export default connect(mapStateToProps)(App);

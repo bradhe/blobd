@@ -1,4 +1,5 @@
 import {
+  UPLOAD_READY,
   UPLOAD_START,
   UPLOAD_PROGRESS,
   UPLOAD_COMPLETE,
@@ -12,11 +13,11 @@ const reducer = (state = {}, action) => {
     case UPLOAD_PROGRESS:
       return { ...state, status: UPLOAD_PROGRESS, progress: action.progress };
     case UPLOAD_COMPLETE:
-      return { ...state, status: UPLOAD_COMPLETE };
+      return { ...state, status: UPLOAD_READY };
     case UPLOAD_FAIL:
       return { status: UPLOAD_FAIL, file: action.file };
     default:
-      return { status: null };
+      return { status: UPLOAD_READY };
   }
 };
 
