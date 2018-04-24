@@ -26,11 +26,8 @@ func randomBlob(size int) []byte {
 	return blob
 }
 
-func TestSecureBlobCreation(t *testing.T) {
-	blob := randomBlob(4096)
-
-	// TODO: Default behavior is to use inmem storage...what if that changes?
-	s := server.New(server.ServerOptions{})
+func AssertCreateBlob(t *testing.T, s *server.Server, blob []byte) server.PostBlobResponse {
+	t.Helper()
 
 	r := httptest.NewRequest("POST", "/", bytes.NewBuffer(blob))
 	w := httptest.NewRecorder()
@@ -47,21 +44,86 @@ func TestSecureBlobCreation(t *testing.T) {
 	assert.NotEmpty(t, res.WritableJWT)
 	assert.NotEmpty(t, res.ReadOnlyJWT)
 
-	r = httptest.NewRequest("GET", "/"+res.Id, nil)
-	w = httptest.NewRecorder()
+	return res
+}
+
+func AssertUnauthenticatedReadFails(t *testing.T, s *server.Server, id string) {
+	t.Helper()
+
+	r := httptest.NewRequest("GET", "/"+id, nil)
+	w := httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
 	assert.Equal(t, w.Code, http.StatusUnauthorized)
+}
 
-	// if we use the JWT that we got back, we should be OK.
-	r = httptest.NewRequest("GET", "/"+res.Id, nil)
-	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
+func AssertAuthenticatedReadFails(t *testing.T, s *server.Server, id, jwt string) {
+	t.Helper()
 
-	w = httptest.NewRecorder()
+	r := httptest.NewRequest("GET", "/"+id, nil)
+	r.Header.Set("Authorization", "Bearer "+jwt)
+	w := httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, w.Code, http.StatusUnauthorized)
+}
+
+func AssertAuthenticatedReadSucceeds(t *testing.T, s *server.Server, id, jwt string) []byte {
+	t.Helper()
+
+	r := httptest.NewRequest("GET", "/"+id, nil)
+	r.Header.Set("Authorization", "Bearer "+jwt)
+	w := httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
 	assert.Equal(t, w.Code, http.StatusOK)
-	assert.Equal(t, w.Body.Bytes(), blob)
+
+	return w.Body.Bytes()
+}
+
+func AssertAuthenticatedUpdateSucceeds(t *testing.T, s *server.Server, id, jwt string, blob []byte) server.PutBlobResponse {
+	t.Helper()
+
+	r := httptest.NewRequest("PUT", "/"+id, bytes.NewBuffer(blob))
+	r.Header.Set("Authorization", "Bearer "+jwt)
+	w := httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, w.Code, http.StatusOK)
+
+	// The response should contain a valid JWT.
+	var res server.PutBlobResponse
+
+	dec := json.NewDecoder(w.Body)
+	assert.NoError(t, dec.Decode(&res))
+	assert.NotEmpty(t, res.WritableJWT)
+	assert.NotEmpty(t, res.ReadOnlyJWT)
+
+	return res
+}
+
+func AssertAuthenticatedUpdateFails(t *testing.T, s *server.Server, id, jwt string, blob []byte) {
+	t.Helper()
+
+	r := httptest.NewRequest("PUT", "/"+id, bytes.NewBuffer(blob))
+	r.Header.Set("Authorization", "Bearer "+jwt)
+	w := httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, w.Code, http.StatusUnauthorized)
+}
+
+func TestSecureBlobCreation(t *testing.T) {
+	blob := randomBlob(4096)
+
+	// TODO: Default behavior is to use inmem storage...what if that changes?
+	s := server.New(server.ServerOptions{})
+
+	res := AssertCreateBlob(t, s, blob)
+
+	AssertUnauthenticatedReadFails(t, s, res.Id)
+	body := AssertAuthenticatedReadSucceeds(t, s, res.Id, res.ReadOnlyJWT)
+	assert.Equal(t, body, blob)
 }
 
 func TestBlobUpdating(t *testing.T) {
@@ -72,38 +134,10 @@ func TestBlobUpdating(t *testing.T) {
 	// TODO: Default behavior is to use inmem storage...what if that changes?
 	s := server.New(server.ServerOptions{})
 
-	r := httptest.NewRequest("POST", "/", bytes.NewBuffer(blob))
-	w := httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusOK)
-
-	// The response should contain a valid JWT.
-	var res server.PostBlobResponse
-
-	dec := json.NewDecoder(w.Body)
-	assert.NoError(t, dec.Decode(&res))
-
-	r = httptest.NewRequest("PUT", "/"+res.Id, bytes.NewBuffer(otherBlob))
-	r.Header.Set("Authorization", "Bearer "+res.WritableJWT)
-
-	w = httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusOK)
-
-	// TODO: Test that we get a valid JWT back again.
-
-	// we should be able to get the blob again, but it should be the updated
-	// version of the blob.
-	r = httptest.NewRequest("GET", "/"+res.Id, nil)
-	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
-
-	w = httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusOK)
-	assert.Equal(t, w.Body.Bytes(), otherBlob)
+	res := AssertCreateBlob(t, s, blob)
+	AssertAuthenticatedUpdateSucceeds(t, s, res.Id, res.WritableJWT, otherBlob)
+	body := AssertAuthenticatedReadSucceeds(t, s, res.Id, res.ReadOnlyJWT)
+	assert.Equal(t, body, otherBlob)
 }
 
 func TestInvalidJWTDuringUpdate(t *testing.T) {
@@ -114,39 +148,13 @@ func TestInvalidJWTDuringUpdate(t *testing.T) {
 	// TODO: Default behavior is to use inmem storage...what if that changes?
 	s := server.New(server.ServerOptions{})
 
-	r := httptest.NewRequest("POST", "/", bytes.NewBuffer(blob))
-	w := httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusOK)
-
-	// The response should contain a valid JWT.
-	var res server.PostBlobResponse
-
-	dec := json.NewDecoder(w.Body)
-	assert.NoError(t, dec.Decode(&res))
+	// first blob is what we'll use on second update.
+	res := AssertCreateBlob(t, s, blob)
 
 	// create a second blob which will be secured with a different token.
-	r = httptest.NewRequest("POST", "/", bytes.NewBuffer(otherBlob))
-	w = httptest.NewRecorder()
+	res2 := AssertCreateBlob(t, s, otherBlob)
 
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusOK)
-
-	var res2 server.PostBlobResponse
-
-	dec = json.NewDecoder(w.Body)
-	assert.NoError(t, dec.Decode(&res2))
-
-	r = httptest.NewRequest("PUT", "/"+res2.Id, bytes.NewBuffer(blob))
-
-	// this is the wrong JWT--it's the JWT from the *first* request.
-	r.Header.Set("Authorization", "Bearer "+res.WritableJWT)
-
-	w = httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusUnauthorized)
+	AssertAuthenticatedUpdateFails(t, s, res2.Id, res.WritableJWT, blob)
 }
 
 func TestReadOnlyJWTDuringUpdate(t *testing.T) {
@@ -157,27 +165,8 @@ func TestReadOnlyJWTDuringUpdate(t *testing.T) {
 	// TODO: Default behavior is to use inmem storage...what if that changes?
 	s := server.New(server.ServerOptions{})
 
-	r := httptest.NewRequest("POST", "/", bytes.NewBuffer(blob))
-	w := httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusOK)
-
-	// The response should contain a valid JWT.
-	var res server.PostBlobResponse
-
-	dec := json.NewDecoder(w.Body)
-	assert.NoError(t, dec.Decode(&res))
-
-	r = httptest.NewRequest("PUT", "/"+res.Id, bytes.NewBuffer(blob))
-
-	// this is the wrong JWT--it's the JWT from the *first* request.
-	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
-
-	w = httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusUnauthorized)
+	res := AssertCreateBlob(t, s, blob)
+	AssertAuthenticatedUpdateFails(t, s, res.Id, res.ReadOnlyJWT, blob)
 }
 
 func TestInvalidJWTDuringGet(t *testing.T) {
@@ -188,37 +177,8 @@ func TestInvalidJWTDuringGet(t *testing.T) {
 	// TODO: Default behavior is to use inmem storage...what if that changes?
 	s := server.New(server.ServerOptions{})
 
-	r := httptest.NewRequest("POST", "/", bytes.NewBuffer(blob))
-	w := httptest.NewRecorder()
+	firstBlob := AssertCreateBlob(t, s, blob)
+	secondBlob := AssertCreateBlob(t, s, otherBlob)
 
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusOK)
-
-	// The response should contain a valid JWT.
-	var res server.PostBlobResponse
-
-	dec := json.NewDecoder(w.Body)
-	assert.NoError(t, dec.Decode(&res))
-
-	// create a second blob which will be secured with a different token.
-	r = httptest.NewRequest("POST", "/", bytes.NewBuffer(otherBlob))
-	w = httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusOK)
-
-	var res2 server.PostBlobResponse
-
-	dec = json.NewDecoder(w.Body)
-	assert.NoError(t, dec.Decode(&res2))
-
-	r = httptest.NewRequest("GET", "/"+res2.Id, nil)
-
-	// this is the wrong JWT--it's the JWT from the *first* request.
-	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
-
-	w = httptest.NewRecorder()
-
-	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusUnauthorized)
+	AssertAuthenticatedReadFails(t, s, secondBlob.Id, firstBlob.ReadOnlyJWT)
 }
