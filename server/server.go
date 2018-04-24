@@ -48,7 +48,7 @@ func (m CORSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func CORSMiddleware(next http.Handler) http.Handler {
+func corsMiddleware(next http.Handler) http.Handler {
 	h := CORSHandler{}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -58,36 +58,24 @@ func CORSMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
-	h := Handler{
+	h := handler{
 		Vars:     make(map[string]string),
 		Context:  ctx,
 		Managers: s.Managers.WithContext(ctx),
 	}
 
 	r := mux.NewRouter()
-	r.Use(CORSMiddleware)
+	r.Use(corsMiddleware)
 	r.NotFoundHandler = NotFoundHandler{}
 	r.MethodNotAllowedHandler = MethodNotAllowedHandler{}
 
 	// Unauthenticated...
 	r.HandleFunc("/", h.PostBlob).Methods("POST")
-	r.Handle("/", CORSHandler{}).Methods("OPTIONS")
-	r.Handle("/{blob_id}", &BlobHandler{Handler: h})
-
-	// We'll
-	assets := ui.Paths()
-
-	for _, asset := range assets {
-		r.HandleFunc(asset, ui.ServeAsset(asset)).Methods("GET")
-	}
-
-	// The default UI path is under /ui/
-	r.HandleFunc("/ui/", ui.ServeAsset("/index.html")).Methods("GET")
+	r.Handle("/{blob_id}", &blobHandler{handler: h})
+	r.Handle("/ui/", ui.Handler("/ui/"))
 
 	// For convenience do a redirect to /ui if ther GET /
-	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/ui/", http.StatusFound)
-	})
+	r.HandleFunc("/", RedirectHandlerFunc("/ui/"))
 
 	// Custom walk of the routes to extract the variables we defined
 	// in the map here. If we can match a route, we'll populate the

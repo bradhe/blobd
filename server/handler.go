@@ -10,7 +10,7 @@ import (
 	"github.com/bradhe/blobd/storage/managers"
 )
 
-type Handler struct {
+type handler struct {
 	// The context this request was started in.
 	Context context.Context
 
@@ -27,7 +27,7 @@ type PostBlobResponse struct {
 	ReadOnlyJWT string `json:"read_jwt"`
 }
 
-func (h Handler) upload(key *crypt.Key, r *http.Request) (*blobs.Blob, error) {
+func (h handler) upload(key *crypt.Key, r *http.Request) (*blobs.Blob, error) {
 	reader := newRequestReader(r)
 
 	log.WithFields(map[string]interface{}{
@@ -51,7 +51,7 @@ func (h Handler) upload(key *crypt.Key, r *http.Request) (*blobs.Blob, error) {
 	}
 }
 
-func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
+func (h handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 	// always close the body when we're done with it otherwise we end up with a
 	// bunch of open handles over time.
 	defer r.Body.Close()
@@ -79,8 +79,8 @@ func (h Handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type BlobHandler struct {
-	Handler
+type blobHandler struct {
+	handler
 
 	AuthorizedBlobId blobs.Id
 	RequestedBlobId  blobs.Id
@@ -90,7 +90,7 @@ type BlobHandler struct {
 
 type authenticatedHandlerFunc = func(claims *BlobClaims, w http.ResponseWriter, r *http.Request)
 
-func (h *BlobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Request, fn authenticatedHandlerFunc) {
+func (h *blobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Request, fn authenticatedHandlerFunc) {
 	_, claims, err := ParseJWT(r.Header.Get("Authorization"))
 
 	if claims != nil {
@@ -118,7 +118,7 @@ func (h *BlobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func (h *BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *blobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.withAuthenticatedRequest(w, r, func(claims *BlobClaims, w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case "GET":
@@ -137,7 +137,7 @@ func (h *BlobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *BlobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
+func (h *blobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 	manager := h.Managers.Blobs()
 
 	if blob, err := manager.Get(h.RequestedBlobId); err != nil {
@@ -154,7 +154,7 @@ type PutBlobResponse struct {
 	WritableJWT string `json:"write_jwt"`
 }
 
-func (h *BlobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
+func (h *blobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 	manager := h.Managers.Blobs()
 
 	blob := blobs.Blob{

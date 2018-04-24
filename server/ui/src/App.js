@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import './App.css';
-import FileUpload from './FileUpload.js';
+import Uploader from './Uploader.js';
 import { MuiThemeProvider, getMuiTheme } from 'material-ui/styles';
 import { fullBlack, red700, red800, red50, red100, red500, pinkA200, darkBlack, white, grey100, grey500, grey300 } from 'material-ui/styles/colors'
 
@@ -35,7 +35,7 @@ class App extends Component {
       <MuiThemeProvider muiTheme={this.muiTheme}>
         <div className="App">
           <main className="container">
-            <FileUpload />
+            <Uploader {...this.props.upload} />
           </main>
         </div>
       </MuiThemeProvider>
@@ -44,7 +44,9 @@ class App extends Component {
 }
 
 const mapStateToProps = (state, ownProps) => {
-  return {}
+  return {
+    upload: state.upload,
+  }
 };
 
 export default connect(mapStateToProps)(App);

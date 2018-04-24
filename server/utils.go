@@ -36,3 +36,9 @@ func requestContentType(req *http.Request) string {
 
 	return "application/octet-stream"
 }
+
+func RedirectHandlerFunc(to string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, to, http.StatusFound)
+	}
+}
