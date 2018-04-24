@@ -34,6 +34,29 @@ func (m MethodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	RenderError(w, GetError("method_not_allowed", r.URL.Path, r.Method))
 }
 
+type CORSHandler struct{}
+
+func (m CORSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+	if origin := r.Header.Get("Origin"); origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	} else {
+		// Best we can do for allowing this thing.
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	}
+}
+
+func CORSMiddleware(next http.Handler) http.Handler {
+	h := CORSHandler{}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
+	})
+}
+
 func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
 	h := Handler{
 		Vars:     make(map[string]string),
@@ -42,11 +65,13 @@ func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
 	}
 
 	r := mux.NewRouter()
+	r.Use(CORSMiddleware)
 	r.NotFoundHandler = NotFoundHandler{}
 	r.MethodNotAllowedHandler = MethodNotAllowedHandler{}
 
 	// Unauthenticated...
 	r.HandleFunc("/", h.PostBlob).Methods("POST")
+	r.Handle("/", CORSHandler{}).Methods("OPTIONS")
 	r.Handle("/{blob_id}", &BlobHandler{Handler: h})
 
 	// We'll
@@ -125,16 +150,17 @@ func bytes(arr ...int64) uint64 {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	start := stopwatch.Start()
 	wrapper := newLoggingResponseWriter(w)
-	s.getMux(r.Context(), r).ServeHTTP(wrapper, r)
-	stop := stopwatch.Stop(start)
 
-	log.WithFields(map[string]interface{}{
-		"status": wrapper.StatusCode,
-		"bytes":  bytes(wrapper.Bytes, r.ContentLength),
-		"time":   fmt.Sprintf("%v", stop),
-	}).Infof("served %s to %s", r.Method, r.RemoteAddr)
+	defer stopwatch.Start().Timer(func(watch stopwatch.Watch) {
+		log.WithFields(map[string]interface{}{
+			"status": wrapper.StatusCode,
+			"bytes":  bytes(wrapper.Bytes, r.ContentLength),
+			"time":   watch,
+		}).Infof("served %s to %s", r.Method, r.RemoteAddr)
+	})
+
+	s.getMux(r.Context(), r).ServeHTTP(wrapper, r)
 }
 
 func (s *Server) ListenAndServe(addr string) {
