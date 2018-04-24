@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import { upload } from './actions';
-import api from './api';
 
 class FileUpload extends Component {
   constructor(props, context) {
@@ -15,7 +14,7 @@ class FileUpload extends Component {
 
     // TODO: Should there be support for multiple files?
     let file = e.target.files[0];
-    api.upload(file).then(() => console.log(arguments)).catch(() => console.log('err', arguments));
+    dispatch(upload(file));
   }
 
   render() {

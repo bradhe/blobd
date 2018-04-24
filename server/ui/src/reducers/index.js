@@ -1,3 +1,6 @@
 import { combineReducers } from 'redux';
+import upload from './upload';
 
-export default combineReducers({});
+export default combineReducers({
+  upload,
+});

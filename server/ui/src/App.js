@@ -4,7 +4,6 @@ import './App.css';
 import FileUpload from './FileUpload.js';
 import { MuiThemeProvider, getMuiTheme } from 'material-ui/styles';
 import { fullBlack, red700, red800, red50, red100, red500, pinkA200, darkBlack, white, grey100, grey500, grey300 } from 'material-ui/styles/colors'
-import api from './api';
 
 class App extends Component {
   constructor(properties, context) {

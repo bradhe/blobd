@@ -26,36 +26,28 @@ function responseHandler(reject, resolve, err, res, skipNotFound = false) {
 }
 
 
-const api = {
-  send() {
-    return new Promise((resolve, reject) => {
-      request.post(apiRoot('/api/turn-off'))
-        .end((err, res) => {
-          responseHandler(reject, resolve, err, res);
-        });
-    });
-  },
+export function download(id, jwt) {
+  return new Promise((resolve, reject) => {
+    request.get(apiRoot(`/${id}`))
+      .setHeader('Authorization', `Bearer ${jwt}`)
+      .end((err, res) => {
+        responseHandler(reject, resolve, err, res);
+      });
+  });
+};
 
-  getBlob(id, jwt) {
-    return new Promise((resolve, reject) => {
-      request.get(apiRoot(`/${id}`))
-        .setHeader('Authorization', `Bearer ${jwt}`)
-        .end((err, res) => {
-          responseHandler(reject, resolve, err, res);
-        });
-    });
-  },
-
-  upload(file) {
-    return new Promise((resolve, reject) => {
-      console.log('uploading', file);
-      request.post(apiRoot('/'))
-        .attach('content', file, {mimeType: file.type})
-        .end((err, res) => {
-          responseHandler(reject, resolve, err, res);
-        });
-    });
-  }
-}
-
-export default api;
+export function uploadFile(file, progress) {
+  return new Promise((resolve, reject) => {
+    console.log('uploading', file);
+    request.post(apiRoot('/'))
+      .attach('content', file, {mimeType: file.type})
+      .on('progress', (event) => {
+        if (progress) {
+          progress(event.percent);
+        }
+      })
+      .end((err, res) => {
+        responseHandler(reject, resolve, err, res);
+      });
+  });
+};
