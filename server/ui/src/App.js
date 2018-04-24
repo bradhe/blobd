@@ -3,7 +3,7 @@ import { connect } from 'react-redux';
 import './App.css';
 import Uploader from './Uploader.js';
 import { MuiThemeProvider, getMuiTheme } from 'material-ui/styles';
-import { fullBlack, red700, red800, red50, red100, red500, pinkA200, darkBlack, white, grey100, grey500, grey300 } from 'material-ui/styles/colors'
+import { fullBlack, white, purple500, grey800, deepPurpleA700, deepPurpleA200, deepPurple500, deepPurple300, deepPurple200, deepPurple100 } from 'material-ui/styles/colors'
 
 class App extends Component {
   constructor(properties, context) {
@@ -11,19 +11,19 @@ class App extends Component {
 
     this.muiTheme = getMuiTheme({
       palette: {
-	primary1Color: red500,
-	primary2Color: red100,
-	primary3Color: red50,
-        accent1Color: pinkA200,
-        accent2Color: grey100,
-        accent3Color: grey500,
-	textColor: darkBlack,
+	primary1Color: deepPurple300,
+	primary2Color: deepPurple200,
+	primary3Color: deepPurple100,
+        accent1Color: deepPurpleA700,
+        accent2Color: deepPurpleA200,
+        accent3Color: deepPurpleA700,
+	textColor: grey800,
 	alternateTextColor: white,
-	canvasColor: white,
-	borderColor: grey300,
-	disabledColor: red100,
-	pickerHeaderColor: red500,
-	clockCircleColor: darkBlack,
+	canvasColor: deepPurple500,
+	borderColor: deepPurple200,
+	disabledColor: deepPurple100,
+	pickerHeaderColor: deepPurpleA700,
+	clockCircleColor: deepPurpleA200,
 	shadowColor: fullBlack,
       },
       userAgent: properties.userAgent
@@ -34,7 +34,7 @@ class App extends Component {
     return (
       <MuiThemeProvider muiTheme={this.muiTheme}>
         <div className="App">
-          <main className="container">
+          <main className="blobd-container">
             <Uploader {...this.props.upload} />
           </main>
         </div>
