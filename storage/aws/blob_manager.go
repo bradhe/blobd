@@ -60,17 +60,6 @@ func (bm *BlobManager) download(blob *blobs.Blob) error {
 
 	blob.Body = iox.MakeContentReader(mediaType, resp.Body)
 
-	// AWS uses the Expires field to track the expiration of the object. The
-	// format conforms to RFC1123. This is based on anecdotal (e.g. testing)
-	// evidence and I couldn't find anything in the docs to support it.
-	if resp.Expires != nil {
-		if t, err := time.Parse(time.RFC1123, *resp.Expires); err == nil {
-			blob.ExpiresAt = t
-		} else {
-			log.WithError(err).Error("failed to parse expiration from Amazon")
-		}
-	}
-
 	return nil
 }
 

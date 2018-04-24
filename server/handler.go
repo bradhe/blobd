@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/bradhe/blobd/blobs"
 	"github.com/bradhe/blobd/crypt"
@@ -23,6 +24,7 @@ type handler struct {
 
 type PostBlobResponse struct {
 	Id          string `json:"blob_id"`
+	ExpiresAt   string `json:"expires_at"`
 	WritableJWT string `json:"write_jwt"`
 	ReadOnlyJWT string `json:"read_jwt"`
 }
@@ -70,6 +72,7 @@ func (h handler) PostBlob(w http.ResponseWriter, r *http.Request) {
 		} else {
 			resp := PostBlobResponse{
 				Id:          blob.Id.String(),
+				ExpiresAt:   blob.ExpiresAt.UTC().Format(time.RFC3339),
 				ReadOnlyJWT: GenerateJWT(ReadOnlyToken, key, blob),
 				WritableJWT: GenerateJWT(WritableToken, key, blob),
 			}
@@ -133,6 +136,8 @@ func (h *blobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				RenderError(w, GetError("unauthorized"))
 			}
+		default:
+			RenderError(w, GetError("method_not_allowed"))
 		}
 	})
 }
@@ -150,6 +155,7 @@ func (h *blobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 }
 
 type PutBlobResponse struct {
+	ExpiresAt   string `json:"expires_at"`
 	ReadOnlyJWT string `json:"read_jwt"`
 	WritableJWT string `json:"write_jwt"`
 }
@@ -158,8 +164,9 @@ func (h *blobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 	manager := h.Managers.Blobs()
 
 	blob := blobs.Blob{
-		Id:   h.RequestedBlobId,
-		Body: crypt.NewEncrypter(h.Claims.Key, r.Body),
+		Id:        h.RequestedBlobId,
+		ExpiresAt: h.Claims.ExpiresAt(),
+		Body:      crypt.NewEncrypter(h.Claims.Key, r.Body),
 	}
 
 	if err := manager.Update(&blob); err != nil {
@@ -167,6 +174,7 @@ func (h *blobHandler) PutBlob(w http.ResponseWriter, r *http.Request) {
 		RenderError(w, GetError("internal_server_error"))
 	} else {
 		resp := PutBlobResponse{
+			ExpiresAt:   blob.ExpiresAt.UTC().Format(time.RFC3339),
 			ReadOnlyJWT: GenerateJWT(ReadOnlyToken, h.Claims.Key, &blob),
 			WritableJWT: GenerateJWT(WritableToken, h.Claims.Key, &blob),
 		}

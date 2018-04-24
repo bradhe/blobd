@@ -46,6 +46,10 @@ type BlobClaims struct {
 	MediaType string `json:"media_type"`
 }
 
+func (bc *BlobClaims) ExpiresAt() time.Time {
+	return time.Unix(bc.EXP, 0)
+}
+
 func (bc *BlobClaims) IsReadable() bool {
 	switch bc.Type {
 	case ReadOnlyToken, WritableToken:
