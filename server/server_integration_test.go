@@ -26,6 +26,30 @@ func randomBlob(size int) []byte {
 	return blob
 }
 
+func AssertGET(t *testing.T, s *server.Server, path string) {
+	r := httptest.NewRequest("GET", path, nil)
+	w := httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func AssertGETNotFound(t *testing.T, s *server.Server, path string) {
+	r := httptest.NewRequest("GET", path, nil)
+	w := httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, w.Code, http.StatusNotFound)
+}
+
+func AssertPUTNotAllowed(t *testing.T, s *server.Server, path string) {
+	r := httptest.NewRequest("PUT", path, nil)
+	w := httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, w.Code, http.StatusMethodNotAllowed)
+}
+
 func AssertCreateBlob(t *testing.T, s *server.Server, blob []byte) server.PostBlobResponse {
 	t.Helper()
 
@@ -181,4 +205,11 @@ func TestInvalidJWTDuringGet(t *testing.T) {
 	secondBlob := AssertCreateBlob(t, s, otherBlob)
 
 	AssertAuthenticatedReadFails(t, s, secondBlob.Id, firstBlob.ReadOnlyJWT)
+}
+
+func TestServingUI(t *testing.T) {
+	s := server.New(server.ServerOptions{})
+	AssertGET(t, s, "/ui/")
+	AssertGETNotFound(t, s, "/ui/something-is-not-right.html")
+	AssertPUTNotAllowed(t, s, "/ui/")
 }
