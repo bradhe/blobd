@@ -36,28 +36,25 @@ func TestSecureBlobCreation(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusFound)
-	assert.NotEmpty(t, w.HeaderMap["Location"])
+	assert.Equal(t, w.Code, http.StatusOK)
 
 	// The response should contain a valid JWT.
 	var res server.PostBlobResponse
 
 	dec := json.NewDecoder(w.Body)
 	assert.NoError(t, dec.Decode(&res))
+	assert.NotEmpty(t, res.Id)
 	assert.NotEmpty(t, res.WritableJWT)
 	assert.NotEmpty(t, res.ReadOnlyJWT)
 
-	// we shouldn't be able to fetch this blob without authentication of some kind.
-	loc := w.HeaderMap.Get("Location")
-
-	r = httptest.NewRequest("GET", loc, nil)
+	r = httptest.NewRequest("GET", "/"+res.Id, nil)
 	w = httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
 	assert.Equal(t, w.Code, http.StatusUnauthorized)
 
 	// if we use the JWT that we got back, we should be OK.
-	r = httptest.NewRequest("GET", loc, nil)
+	r = httptest.NewRequest("GET", "/"+res.Id, nil)
 	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
 
 	w = httptest.NewRecorder()
@@ -79,7 +76,7 @@ func TestBlobUpdating(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusFound)
+	assert.Equal(t, w.Code, http.StatusOK)
 
 	// The response should contain a valid JWT.
 	var res server.PostBlobResponse
@@ -87,9 +84,7 @@ func TestBlobUpdating(t *testing.T) {
 	dec := json.NewDecoder(w.Body)
 	assert.NoError(t, dec.Decode(&res))
 
-	loc := w.HeaderMap.Get("Location")
-
-	r = httptest.NewRequest("PUT", loc, bytes.NewBuffer(otherBlob))
+	r = httptest.NewRequest("PUT", "/"+res.Id, bytes.NewBuffer(otherBlob))
 	r.Header.Set("Authorization", "Bearer "+res.WritableJWT)
 
 	w = httptest.NewRecorder()
@@ -101,7 +96,7 @@ func TestBlobUpdating(t *testing.T) {
 
 	// we should be able to get the blob again, but it should be the updated
 	// version of the blob.
-	r = httptest.NewRequest("GET", loc, nil)
+	r = httptest.NewRequest("GET", "/"+res.Id, nil)
 	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
 
 	w = httptest.NewRecorder()
@@ -123,7 +118,7 @@ func TestInvalidJWTDuringUpdate(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusFound)
+	assert.Equal(t, w.Code, http.StatusOK)
 
 	// The response should contain a valid JWT.
 	var res server.PostBlobResponse
@@ -136,11 +131,14 @@ func TestInvalidJWTDuringUpdate(t *testing.T) {
 	w = httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusFound)
+	assert.Equal(t, w.Code, http.StatusOK)
 
-	loc := w.HeaderMap.Get("Location")
+	var res2 server.PostBlobResponse
 
-	r = httptest.NewRequest("PUT", loc, bytes.NewBuffer(blob))
+	dec = json.NewDecoder(w.Body)
+	assert.NoError(t, dec.Decode(&res2))
+
+	r = httptest.NewRequest("PUT", "/"+res2.Id, bytes.NewBuffer(blob))
 
 	// this is the wrong JWT--it's the JWT from the *first* request.
 	r.Header.Set("Authorization", "Bearer "+res.WritableJWT)
@@ -163,9 +161,7 @@ func TestReadOnlyJWTDuringUpdate(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusFound)
-
-	loc := w.HeaderMap.Get("Location")
+	assert.Equal(t, w.Code, http.StatusOK)
 
 	// The response should contain a valid JWT.
 	var res server.PostBlobResponse
@@ -173,7 +169,7 @@ func TestReadOnlyJWTDuringUpdate(t *testing.T) {
 	dec := json.NewDecoder(w.Body)
 	assert.NoError(t, dec.Decode(&res))
 
-	r = httptest.NewRequest("PUT", loc, bytes.NewBuffer(blob))
+	r = httptest.NewRequest("PUT", "/"+res.Id, bytes.NewBuffer(blob))
 
 	// this is the wrong JWT--it's the JWT from the *first* request.
 	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
@@ -196,7 +192,7 @@ func TestInvalidJWTDuringGet(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusFound)
+	assert.Equal(t, w.Code, http.StatusOK)
 
 	// The response should contain a valid JWT.
 	var res server.PostBlobResponse
@@ -209,11 +205,14 @@ func TestInvalidJWTDuringGet(t *testing.T) {
 	w = httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
-	assert.Equal(t, w.Code, http.StatusFound)
+	assert.Equal(t, w.Code, http.StatusOK)
 
-	loc := w.HeaderMap.Get("Location")
+	var res2 server.PostBlobResponse
 
-	r = httptest.NewRequest("GET", loc, nil)
+	dec = json.NewDecoder(w.Body)
+	assert.NoError(t, dec.Decode(&res2))
+
+	r = httptest.NewRequest("GET", "/"+res2.Id, nil)
 
 	// this is the wrong JWT--it's the JWT from the *first* request.
 	r.Header.Set("Authorization", "Bearer "+res.ReadOnlyJWT)
