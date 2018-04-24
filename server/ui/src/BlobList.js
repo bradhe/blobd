@@ -1,8 +1,9 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
+import moment from 'moment';
+import { copyLink } from './actions/index.js';
 
 import ContentCopy from 'material-ui/svg-icons/content/content-copy';
-import FileDownload from 'material-ui/svg-icons/file/file-download';
 import LinearProgress from 'material-ui/LinearProgress';
 import Paper from 'material-ui/Paper';
 import {List, ListItem} from 'material-ui/List';
@@ -10,28 +11,34 @@ import IconButton from 'material-ui/IconButton';
 
 import {
   UPLOAD_START,
-  UPLOAD_PROGRESS,
-  UPLOAD_READY
+  UPLOAD_PROGRESS
 } from './constants.js';
 
-const blobListItem = (blob) => {
-  const buttons = (
-    <div>
-      <IconButton>
-        <ContentCopy/>
-      </IconButton>
-      <IconButton>
-        <FileDownload/>
-      </IconButton>
-    </div>
-  );
-
+const expiresAt = (blob) => {
   return (
-    <ListItem
-      disabled={true}
-      primaryText={blob.filename}
-      rightIconButton={buttons} />
+    <em>Expires {moment(blob.expires_at).from(moment().utc())}</em>
   );
+};
+
+const blobListItem = (blob) => {
+  if (moment(blob.expires_at).isAfter(moment().utc())) {
+    const buttons = (
+      <div>
+        <IconButton onClick={ copyLink(blob) }>
+          <ContentCopy/>
+        </IconButton>
+      </div>
+    );
+
+    return (
+      <ListItem
+        key={blob.blob_id}
+        disabled={true}
+        primaryText={blob.filename}
+        secondaryText={expiresAt(blob)}
+        rightIconButton={buttons} />
+    );
+  }
 };
 
 const renderProgress = (upload) => {
@@ -43,16 +50,21 @@ const renderProgress = (upload) => {
 }
 
 class BlobList extends Component {
-  renderCurrentUpload() {
-    const { upload } = this.props;
+  renderUpload(upload) {
+    return (
+      <ListItem
+        key={upload.id}
+        disabled={true}
+        primaryText={upload.file.name}
+        secondaryText={renderProgress(upload)} />
+    )
+  }
 
-    if (upload.status !== UPLOAD_READY) {
-      return (
-        <ListItem
-          disabled={true}
-          primaryText={upload.file.name}
-          secondaryText={renderProgress(upload)} />
-      )
+  renderUploads() {
+    const { uploads } = this.props;
+
+    if (uploads) {
+      return uploads.map(this.renderUpload);
     }
   }
 
@@ -62,8 +74,8 @@ class BlobList extends Component {
     return (
       <Paper className="blobd-uploader-status">
         <List>
-          {this.renderCurrentUpload()}
-          {blobs.blobs.map(blobListItem)}
+          {this.renderUploads()}
+          {blobs.map(blobListItem)}
         </List>
       </Paper>
     );
@@ -71,8 +83,10 @@ class BlobList extends Component {
 }
 
 const mapStateToProps = (state, ownProps) => {
+  console.log('state', state);
+
   return {
-    upload: state.upload,
+    uploads: state.upload,
     blobs: state.blobs,
   }
 };

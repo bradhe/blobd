@@ -1,15 +1,19 @@
+import moment from 'moment';
+
 import {
-  TRACK_BLOB
+  NEW_BLOB
 } from '../constants.js';
 
-const reducer = (state = {}, action) => {
+const addBlob = (state, attrs) => {
+  return state.concat(attrs);
+}
+
+const reducer = (state = [], action) => {
   switch (action.type) {
-    case TRACK_BLOB:
-      let blobs = state.blobs || [];
-      blobs.push({ filename: action.filename, blob: action.blob });
-      return { ...state, blobs: blobs };
+    case NEW_BLOB:
+      return addBlob(state, action);
     default:
-      return { blobs: [] };
+      return state;
   };
 };
 

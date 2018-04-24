@@ -6,6 +6,7 @@
     "bluebird": "^3.5.1",
     "debounce": "^1.1.0",
     "material-ui": "^0.20.0",
+    "moment": "^2.22.1",
     "prop-types": "^15.6.1",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",
@@ -14,7 +15,8 @@
     "react-tap-event-plugin": "^3.0.2",
     "redux": "^3.7.2",
     "redux-thunk": "^2.2.0",
-    "superagent": "^3.8.2"
+    "superagent": "^3.8.2",
+    "uuid": "^3.2.1"
   },
   "scripts": {
     "watch-bootstrap": "node-sass --watch --output=./src src/bootstrap.scss",

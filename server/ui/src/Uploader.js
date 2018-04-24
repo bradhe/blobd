@@ -6,19 +6,11 @@ import { PropTypes } from 'prop-types';
 import FloatingActionButton from 'material-ui/FloatingActionButton';
 import ContentAdd from 'material-ui/svg-icons/content/add';
 
-import {
-  UPLOAD_READY
-} from './constants.js';
-
 const propTypes = {
   status: PropTypes.string,
   file: PropTypes.object,
   progress: PropTypes.number,
 };
-
-const uploadButtonDisabled = (status) => {
-  return status !== UPLOAD_READY
-}
 
 class Uploader extends Component {
   constructor(props, context) {
@@ -37,27 +29,22 @@ class Uploader extends Component {
   onFileChange(e) {
     const { dispatch } = this.props;
 
-    // TODO: Should there be support for multiple files?
-    let file = e.target.files[0];
-    dispatch(upload(file));
-  }
-
-  renderUploader() {
-    return (
-      <div className="blobd-uploader-button">
-        <input ref={this.fileInput} type="file" id="blobd-uploader-file" style={{display: 'none'}} onChange={this.onFileChange}/>
-
-        <FloatingActionButton disabled={uploadButtonDisabled(this.props.status)} onClick={this.onUploadButtonClick}>
-          <ContentAdd />
-        </FloatingActionButton>
-      </div>
-    );
+    if (e.target.files) {
+      const files = [...e.target.files];
+      files.forEach((file) => dispatch(upload(file)));
+    }
   }
 
   render() {
     return (
       <div className="blobd-uploader">
-        {this.renderUploader()}
+        <div className="blobd-uploader-button">
+          <input ref={this.fileInput} type="file" id="blobd-uploader-file" style={{display: 'none'}} onChange={this.onFileChange}/>
+
+          <FloatingActionButton onClick={this.onUploadButtonClick}>
+            <ContentAdd />
+          </FloatingActionButton>
+        </div>
       </div>
     );
   }
@@ -66,9 +53,7 @@ class Uploader extends Component {
 Uploader.propTypes = propTypes;
 
 const mapStateToProps = (state, ownProps) => {
-  return {
-    ...state.upload,
-  }
+  return {}
 };
 
 export default connect(mapStateToProps)(Uploader);

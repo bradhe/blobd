@@ -1,33 +1,41 @@
+import uuid from 'uuid/v5';
+
+import { uploadWithProgress } from '../api.js';
+
 import {
   UPLOAD_START,
   UPLOAD_PROGRESS,
   UPLOAD_COMPLETE,
   UPLOAD_FAIL,
-  TRACK_BLOB,
+  NEW_BLOB,
 } from '../constants.js';
 
-import { uploadWithProgress } from '../api.js';
+const NAMESPACE = '9cf62dae-39db-4df7-8408-8eadab53dc01'
 
 export function upload (file) {
   return dispatch => {
+    const id = uuid(file.name, NAMESPACE);
+
     // Indicate that the upload has started.
-    dispatch({ type: UPLOAD_START, file: file });
+    dispatch({ id, type: UPLOAD_START, file: file });
 
     const withProgress = (percent) => {
-      dispatch({ type: UPLOAD_PROGRESS, progress: percent });
+      dispatch({ id, type: UPLOAD_PROGRESS, progress: percent });
     };
 
     return uploadWithProgress(file, withProgress).then((res) => {
-      dispatch({ type: UPLOAD_COMPLETE, file: file, blob: { ...res } });
-      dispatch({ type: TRACK_BLOB, filename: file.name, blob: { ...res } });
+      dispatch({ id, type: UPLOAD_COMPLETE, file: file, blob: { ...res } })
+      return res;
+    }).then((res) => {
+      dispatch({ id, type: NEW_BLOB, filename: file.name, ...res });
     }).catch((res) => {
-      dispatch({ type: UPLOAD_FAIL, file: file });
+      dispatch({ id, type: UPLOAD_FAIL, file: file, error: { ...res } });
     });
   };
 };
 
-export function addFile(filename, blob) {
+export function copyLink(blob) {
   return dispatch => {
-    dispatch({ type: TRACK_BLOB, filename, blob });
+    console.log('downloading', blob);
   };
-}
+};
