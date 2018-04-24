@@ -13,6 +13,7 @@ clean:
 	rm ./cmd/blobd/blobd
 
 build:
+	$(GO) generate ./...
 	$(GO) build -o ./cmd/blobd/blobd ./cmd/blobd
 
 build_linux:
