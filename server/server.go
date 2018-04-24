@@ -22,37 +22,30 @@ type Server struct {
 	Options  ServerOptions
 }
 
-type NotFoundHandler struct{}
+type notFoundHandler struct{}
 
-func (n NotFoundHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (n notFoundHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	RenderError(w, GetError("not_found", r.Method, r.URL.Path))
 }
 
-type MethodNotAllowedHandler struct{}
+type methodNotAllowedHandler struct{}
 
-func (m MethodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (m methodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	RenderError(w, GetError("method_not_allowed", r.URL.Path, r.Method))
 }
 
-type CORSHandler struct{}
-
-func (m CORSHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
-
-	if origin := r.Header.Get("Origin"); origin != "" {
-		w.Header().Set("Access-Control-Allow-Origin", origin)
-	} else {
-		// Best we can do for allowing this thing.
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-	}
-}
-
 func corsMiddleware(next http.Handler) http.Handler {
-	h := CORSHandler{}
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r)
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+		if origin := r.Header.Get("Origin"); origin != "" {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		} else {
+			// Best we can do for allowing this thing.
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+		}
+
 		next.ServeHTTP(w, r)
 	})
 }
@@ -66,13 +59,13 @@ func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
 
 	r := mux.NewRouter()
 	r.Use(corsMiddleware)
-	r.NotFoundHandler = NotFoundHandler{}
-	r.MethodNotAllowedHandler = MethodNotAllowedHandler{}
+	r.NotFoundHandler = notFoundHandler{}
+	r.MethodNotAllowedHandler = methodNotAllowedHandler{}
 
 	// Unauthenticated...
 	r.HandleFunc("/", h.PostBlob).Methods("POST")
 	r.Handle("/{blob_id}", &blobHandler{handler: h})
-	r.Handle("/ui/", ui.Handler("/ui/"))
+	r.PathPrefix("/ui/").Handler(ui.Handler("/ui/"))
 
 	// For convenience do a redirect to /ui if ther GET /
 	r.HandleFunc("/", RedirectHandlerFunc("/ui/"))

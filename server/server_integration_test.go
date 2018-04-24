@@ -210,6 +210,7 @@ func TestInvalidJWTDuringGet(t *testing.T) {
 func TestServingUI(t *testing.T) {
 	s := server.New(server.ServerOptions{})
 	AssertGET(t, s, "/ui/")
+	AssertGET(t, s, "/ui/index.html")
 	AssertGETNotFound(t, s, "/ui/something-is-not-right.html")
 	AssertPUTNotAllowed(t, s, "/ui/")
 }

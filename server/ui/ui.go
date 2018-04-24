@@ -24,6 +24,10 @@ type assetHandler struct {
 }
 
 func (a assetHandler) AssetFromPath(path string) (string, []byte, error) {
+	log.WithFields(map[string]interface{}{
+		"path": path,
+	}).Debugf("looking up asset")
+
 	path = strings.TrimPrefix(path, a.Prefix)
 
 	if strings.HasPrefix(path, "/") {
