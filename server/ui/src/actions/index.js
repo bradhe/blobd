@@ -5,7 +5,7 @@ import {
   UPLOAD_FAIL
 } from '../constants.js';
 
-import { uploadFile } from '../api.js';
+import { uploadWithProgress } from '../api.js';
 
 export function upload (file) {
   return dispatch => {
@@ -16,11 +16,9 @@ export function upload (file) {
       dispatch({ type: UPLOAD_PROGRESS, progress: percent });
     };
 
-    return uploadFile(file, withProgress).then((res) => {
-      console.log('complete', res);
+    return uploadWithProgress(file, withProgress).then((res) => {
       dispatch({ type: UPLOAD_COMPLETE, file: file, blob: { ...res } });
     }).catch((res) => {
-      console.log('failed', res);
       dispatch({ type: UPLOAD_FAIL, file: file });
     });
   };

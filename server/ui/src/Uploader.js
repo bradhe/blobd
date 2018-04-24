@@ -28,36 +28,39 @@ class Uploader extends Component {
     const disabled = this.props.status == 'complete' || !this.props.status ? false : true;
 
     return (
-      <input type="file" onChange={this.onFileChange} disabled={disabled} />
+      <input className="blobd-uploader-input" type="file" onChange={this.onFileChange} disabled={disabled} />
     );
   }
 
   renderProgress() {
     return (
-      <span className="blobd-file-progress">{this.props.progress}%</span>
+      <span className="blobd-uploader-progress">{this.props.progress}%</span>
     );
   }
 
-  render() {
-    let jsx;
-
-    switch (this.props.status) {
-      default:
-      case 'completed':
-      case 'started':
-        jsx = this.renderUploader();
-        break;
-      case 'progress':
-        jsx = this.renderProgress();
-        break;
-      case 'failed':
-        jsx = <span className="blobd-uploader-failed">Upload failed.</span>;
-        break;
-    }
-
+  renderFailedMessage() {
     return (
-      <div className="blobd-file-uploade">
-        {jsx}
+      <span className="blobd-uploader-failed">Upload failed.</span>
+    );
+  }
+
+  renderContent() {
+    switch (this.props.status) {
+      case UPLOAD_PROGRESS:
+        return this.renderProgress();
+      case UPLOAD_FAIL:
+        return this.renderFailedMessage()
+      default:
+      case UPLOAD_COMPLETE:
+      case UPLOAD_START:
+        return this.renderUploader();
+    }
+  }
+
+  render() {
+    return (
+      <div className="blobd-uploader">
+        {this.renderContent()}
       </div>
     );
   }

@@ -42,3 +42,15 @@ func RedirectHandlerFunc(to string) http.HandlerFunc {
 		http.Redirect(w, r, to, http.StatusFound)
 	}
 }
+
+func CORSHandlerFunc(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization")
+
+	if origin := r.Header.Get("Origin"); origin != "" {
+		w.Header().Set("Access-Control-Allow-Origin", origin)
+	} else {
+		// Best we can do for allowing this thing.
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+	}
+}

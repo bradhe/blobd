@@ -36,16 +36,7 @@ func (m methodNotAllowedHandler) ServeHTTP(w http.ResponseWriter, r *http.Reques
 
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Authorization")
-
-		if origin := r.Header.Get("Origin"); origin != "" {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		} else {
-			// Best we can do for allowing this thing.
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-		}
-
+		CORSHandlerFunc(w, r)
 		next.ServeHTTP(w, r)
 	})
 }
@@ -64,11 +55,12 @@ func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
 
 	// Unauthenticated...
 	r.HandleFunc("/", h.PostBlob).Methods("POST")
+	r.HandleFunc("/", CORSHandlerFunc).Methods("OPTIONS")
 	r.Handle("/{blob_id}", &blobHandler{handler: h})
 	r.PathPrefix("/ui/").Handler(ui.Handler("/ui/"))
 
-	// For convenience do a redirect to /ui if ther GET /
-	r.HandleFunc("/", RedirectHandlerFunc("/ui/"))
+	// For convenience do a redirect to /ui if there is a GET /
+	r.HandleFunc("/", RedirectHandlerFunc("/ui/")).Methods("GET")
 
 	// Custom walk of the routes to extract the variables we defined
 	// in the map here. If we can match a route, we'll populate the

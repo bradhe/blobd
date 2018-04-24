@@ -36,15 +36,12 @@ export function download(id, jwt) {
   });
 };
 
-export function uploadFile(file, progress) {
+export function uploadWithProgress(file, progress) {
   return new Promise((resolve, reject) => {
-    console.log('uploading', file);
     request.post(apiRoot('/'))
       .attach('content', file, {mimeType: file.type})
       .on('progress', (event) => {
-        if (progress) {
-          progress(event.percent);
-        }
+        progress(event.percent);
       })
       .end((err, res) => {
         responseHandler(reject, resolve, err, res);

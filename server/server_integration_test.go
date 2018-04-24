@@ -26,7 +26,7 @@ func randomBlob(size int) []byte {
 	return blob
 }
 
-func AssertGET(t *testing.T, s *server.Server, path string) {
+func AssertGet(t *testing.T, s *server.Server, path string) {
 	r := httptest.NewRequest("GET", path, nil)
 	w := httptest.NewRecorder()
 
@@ -34,7 +34,15 @@ func AssertGET(t *testing.T, s *server.Server, path string) {
 	assert.Equal(t, http.StatusOK, w.Code)
 }
 
-func AssertGETNotFound(t *testing.T, s *server.Server, path string) {
+func AssertOptions(t *testing.T, s *server.Server, path string) {
+	r := httptest.NewRequest("OPTIONS", path, nil)
+	w := httptest.NewRecorder()
+
+	s.ServeHTTP(w, r)
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func AssertGetNotFound(t *testing.T, s *server.Server, path string) {
 	r := httptest.NewRequest("GET", path, nil)
 	w := httptest.NewRecorder()
 
@@ -42,7 +50,7 @@ func AssertGETNotFound(t *testing.T, s *server.Server, path string) {
 	assert.Equal(t, w.Code, http.StatusNotFound)
 }
 
-func AssertPUTNotAllowed(t *testing.T, s *server.Server, path string) {
+func AssertPutNotAllowed(t *testing.T, s *server.Server, path string) {
 	r := httptest.NewRequest("PUT", path, nil)
 	w := httptest.NewRecorder()
 
@@ -209,8 +217,9 @@ func TestInvalidJWTDuringGet(t *testing.T) {
 
 func TestServingUI(t *testing.T) {
 	s := server.New(server.ServerOptions{})
-	AssertGET(t, s, "/ui/")
-	AssertGET(t, s, "/ui/index.html")
-	AssertGETNotFound(t, s, "/ui/something-is-not-right.html")
-	AssertPUTNotAllowed(t, s, "/ui/")
+	AssertGet(t, s, "/ui/")
+	AssertGet(t, s, "/ui/index.html")
+	AssertGetNotFound(t, s, "/ui/something-is-not-right.html")
+	AssertPutNotAllowed(t, s, "/ui/")
+	AssertOptions(t, s, "/")
 }
