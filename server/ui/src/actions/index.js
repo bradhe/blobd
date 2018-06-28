@@ -36,6 +36,6 @@ export function upload (file) {
 
 export function copyLink(blob) {
   return dispatch => {
-    console.log('downloading', blob);
+    console.log('copying link', blob);
   };
 };

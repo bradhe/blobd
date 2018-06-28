@@ -4,13 +4,27 @@ import './App.css';
 import Uploader from './Uploader.js';
 import BlobList from './BlobList.js';
 import { MuiThemeProvider, getMuiTheme } from 'material-ui/styles';
-import { fullBlack, white, purple500, grey800, deepPurple700, deepPurpleA700, deepPurpleA200, deepPurple500, deepPurple300, deepPurple200, deepPurple100 } from 'material-ui/styles/colors'
+
+import {
+  fullBlack,
+  white,
+  purple500,
+  grey800,
+  deepPurple700,
+  deepPurpleA700,
+  deepPurpleA200,
+  deepPurple500,
+  deepPurple300,
+  deepPurple200,
+  deepPurple100
+} from 'material-ui/styles/colors'
 
 class App extends Component {
   constructor(properties, context) {
     super(properties, context);
 
     this.muiTheme = getMuiTheme({
+      fontFamily: 'Montserrat',
       palette: {
 	primary1Color: deepPurple700,
 	primary2Color: deepPurple200,

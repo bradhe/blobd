@@ -1,8 +1,8 @@
 import { combineReducers } from 'redux';
-import upload from './upload';
+import uploads from './uploads';
 import blobs from './blobs';
 
 export default combineReducers({
-  upload,
+  uploads,
   blobs,
 });

@@ -1,5 +1,3 @@
-import moment from 'moment';
-
 import {
   NEW_BLOB
 } from '../constants.js';
