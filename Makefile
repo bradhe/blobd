@@ -19,7 +19,7 @@ build:
 build_linux:
 	GOOS=linux GOARCH=amd64 $(GO) build -o ./cmd/blobd/blobd ./cmd/blobd
 
-test:
+test: build
 	$(GOVENDOR) test -tags 'integration unit' ./...	
 
 images: build_linux
