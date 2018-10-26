@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/bradhe/blobd/blobs"
@@ -93,8 +94,8 @@ type blobHandler struct {
 
 type authenticatedHandlerFunc = func(claims *BlobClaims, w http.ResponseWriter, r *http.Request)
 
-func (h *blobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Request, fn authenticatedHandlerFunc) {
-	_, claims, err := ParseJWT(r.Header.Get("Authorization"))
+func (h *blobHandler) withAuthenticatedRequest(token string, w http.ResponseWriter, r *http.Request, fn authenticatedHandlerFunc) {
+	_, claims, err := ParseJWT(token)
 
 	if claims != nil {
 		defer claims.Destroy()
@@ -121,25 +122,49 @@ func (h *blobHandler) withAuthenticatedRequest(w http.ResponseWriter, r *http.Re
 	}
 }
 
+func (h *blobHandler) withAuthenticatedHeaderRequest(w http.ResponseWriter, r *http.Request, fn authenticatedHandlerFunc) {
+	h.withAuthenticatedRequest(r.Header.Get("Authorization"), w, r, fn)
+}
+
+func (h *blobHandler) withAuthenticatedDownloadRequest(w http.ResponseWriter, r *http.Request, fn authenticatedHandlerFunc) {
+	vals := r.URL.Query()
+	h.withAuthenticatedRequest(vals.Get("token"), w, r, fn)
+}
+
+func isDownloadRequest(r *http.Request) bool {
+	vals := r.URL.Query()
+	return strings.EqualFold(r.Method, "get") && vals.Get("dl") == "1"
+}
+
 func (h *blobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.withAuthenticatedRequest(w, r, func(claims *BlobClaims, w http.ResponseWriter, r *http.Request) {
-		switch r.Method {
-		case "GET":
+	if isDownloadRequest(r) {
+		h.withAuthenticatedDownloadRequest(w, r, func(claims *BlobClaims, w http.ResponseWriter, r *http.Request) {
 			if claims.IsReadable() {
-				h.GetBlob(w, r)
+				h.DownloadBlob(w, r)
 			} else {
 				RenderError(w, GetError("unauthorized"))
 			}
-		case "PUT":
-			if claims.IsWritable() {
-				h.PutBlob(w, r)
-			} else {
-				RenderError(w, GetError("unauthorized"))
+		})
+	} else {
+		h.withAuthenticatedHeaderRequest(w, r, func(claims *BlobClaims, w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case "GET":
+				if claims.IsReadable() {
+					h.GetBlob(w, r)
+				} else {
+					RenderError(w, GetError("unauthorized"))
+				}
+			case "PUT":
+				if claims.IsWritable() {
+					h.PutBlob(w, r)
+				} else {
+					RenderError(w, GetError("unauthorized"))
+				}
+			default:
+				RenderError(w, GetError("method_not_allowed"))
 			}
-		default:
-			RenderError(w, GetError("method_not_allowed"))
-		}
-	})
+		})
+	}
 }
 
 func (h *blobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
@@ -150,6 +175,19 @@ func (h *blobHandler) GetBlob(w http.ResponseWriter, r *http.Request) {
 		RenderError(w, GetError("internal_server_error"))
 	} else {
 		w.Header().Set("Content-Type", string(h.Claims.MediaType))
+		io.Copy(w, crypt.NewDecrypter(h.Claims.Key, blob.Body))
+	}
+}
+
+func (h *blobHandler) DownloadBlob(w http.ResponseWriter, r *http.Request) {
+	manager := h.Managers.Blobs()
+
+	if blob, err := manager.Get(h.RequestedBlobId); err != nil {
+		log.WithError(err).Error("failed to get blob")
+		RenderError(w, GetError("internal_server_error"))
+	} else {
+		w.Header().Set("Content-Type", string(h.Claims.MediaType))
+		w.Header().Set("Content-Disposition", "attachment")
 		io.Copy(w, crypt.NewDecrypter(h.Claims.Key, blob.Body))
 	}
 }
