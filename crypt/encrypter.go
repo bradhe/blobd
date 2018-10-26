@@ -41,10 +41,10 @@ func (w *Encrypter) writeMore() error {
 }
 
 func (w *Encrypter) Read(dst []byte) (int, error) {
-	var cum int
+	var acc int
 
 	for {
-		n, err := w.dst.Read(dst[cum:])
+		n, err := w.dst.Read(dst[acc:])
 
 		if err == io.EOF {
 			// try to write more. if we make it to the end of the buffer, we've done
@@ -58,20 +58,20 @@ func (w *Encrypter) Read(dst []byte) (int, error) {
 				}
 			}
 		} else {
-			cum += n
+			acc += n
 
-			if n == 0 || cum == len(dst) {
+			if n == 0 || acc == len(dst) {
 				goto ReadDone
 			}
 		}
 	}
 
 ReadDone:
-	if cum == 0 {
+	if acc == 0 {
 		return 0, io.EOF
 	}
 
-	return cum, nil
+	return acc, nil
 }
 
 func (e *Encrypter) ContentType() string {
