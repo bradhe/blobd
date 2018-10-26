@@ -14,7 +14,7 @@ clean:
 
 build:
 	$(GO) generate ./...
-	$(GO) build -o ./cmd/blobd/blobd ./cmd/blobd
+	$(GO) build -o ./blobd ./cmd/blobd
 
 build_linux:
 	GOOS=linux GOARCH=amd64 $(GO) build -o ./cmd/blobd/blobd ./cmd/blobd

@@ -1,9 +1,13 @@
 version: '3'
 services:
   blobd:
-    build: ./cmd/blobd
+    build: .
     ports:
       - "5001:5001"
     command:
-      - "/blobd-server"
+      - "/blobd"
       - "-listen-addr=0.0.0.0:5001"
+      - "-storage-url=${S3_URL}"
+      - "-debug"
+    env_file:
+      - .env

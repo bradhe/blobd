@@ -2,6 +2,7 @@
 *.sw[onp]
 /server/ui/node_modules
 /server/ui/package-lock.json
+/.env
 
 # Build artifacts
 /blobd
