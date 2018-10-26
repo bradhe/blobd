@@ -20,6 +20,8 @@ type ServerOptions struct {
 type Server struct {
 	Managers managers.Managers
 	Options  ServerOptions
+
+	ui http.Handler
 }
 
 type notFoundHandler struct{}
@@ -57,7 +59,7 @@ func (s *Server) getMux(ctx context.Context, req *http.Request) http.Handler {
 	r.HandleFunc("/", h.PostBlob).Methods("POST")
 	r.HandleFunc("/", CORSHandlerFunc).Methods("OPTIONS")
 	r.Handle("/{blob_id}", &blobHandler{handler: h})
-	r.PathPrefix("/ui/").Handler(ui.Handler("/ui/"))
+	r.PathPrefix("/ui/").Handler(s.ui)
 
 	// For convenience do a redirect to /ui if there is a GET /
 	r.HandleFunc("/", RedirectHandlerFunc("/ui/")).Methods("GET")
@@ -144,5 +146,6 @@ func New(opts ServerOptions) *Server {
 	return &Server{
 		Managers: storage.New(opts.StorageURL),
 		Options:  opts,
+		ui:       ui.Handler(ui.HandlerOptions{Prefix: "/ui/", BlobdHost: "http://localhost:5001"}),
 	}
 }

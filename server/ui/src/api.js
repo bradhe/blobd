@@ -1,10 +1,14 @@
 import request from 'superagent';
 import Promise from 'bluebird';
 
-const DEFAULT_HOST = 'http://localhost:8765'
+const DEFAULT_HOST = 'http://localhost:8765';
+
+const getHost = () => {
+  return window.BLOBD_HOST || DEFAULT_HOST;
+}
 
 const apiRoot = (uri) => {
-  let url = DEFAULT_HOST;
+  let url = getHost();
 
   if (uri) {
     url += uri;
