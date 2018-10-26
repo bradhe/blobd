@@ -29,6 +29,7 @@ type Entry interface {
 type Logger interface {
 	Entry() Entry
 	WithFields(map[string]interface{}) Entry
+	WithField(string, interface{}) Entry
 	WithError(error) Entry
 
 	WithContext(context.Context) Logger

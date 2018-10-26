@@ -32,6 +32,10 @@ func (l *logrusLogger) WithFields(fields map[string]interface{}) Entry {
 	return l.Entry().WithFields(fields)
 }
 
+func (l *logrusLogger) WithField(name string, value interface{}) Entry {
+	return l.WithFields(map[string]interface{}{name: value})
+}
+
 func (l *logrusLogger) WithError(err error) Entry {
 	return l.Entry().WithFields(logrus.Fields{"error": err})
 }
