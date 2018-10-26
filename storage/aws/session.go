@@ -1,6 +1,8 @@
 package aws
 
 import (
+	"os"
+
 	baseaws "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
@@ -33,6 +35,10 @@ func getAWSRegion() string {
 	// time.
 	if knownRegion != "" {
 		return knownRegion
+	}
+
+	if region := os.Getenv("AWS_REGION"); region != "" {
+		return region
 	}
 
 	if region, err := defaultMetadataClient.Region(); err == nil {
