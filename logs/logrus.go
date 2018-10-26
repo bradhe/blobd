@@ -109,6 +109,10 @@ func (e *logrusEntry) WithFields(fields map[string]interface{}) Entry {
 	return &logrusEntry{newEntry}
 }
 
+func (e *logrusEntry) WithField(name string, value interface{}) Entry {
+	return e.WithFields(map[string]interface{}{name: value})
+}
+
 func (e *logrusEntry) Print(str string) {
 	e.base.Print(str)
 }

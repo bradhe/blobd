@@ -6,6 +6,7 @@ import (
 
 type Entry interface {
 	WithFields(map[string]interface{}) Entry
+	WithField(string, interface{}) Entry
 
 	Print(string)
 	Printf(string, ...interface{})

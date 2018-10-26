@@ -78,13 +78,13 @@ func (a *assetHandler) getAsset(path string) ([]byte, error) {
 
 	if buf, err := Asset(path); err == nil {
 		if tmpl, err := template.New(path).Parse(string(buf)); err != nil {
-			log.WithField("path", path).Error("failed to instantiate template")
+			log.WithError(err).WithField("path", path).Error("failed to instantiate template")
 			return nil, ErrTemplateParsingFailed
 		} else {
 			var out bytes.Buffer
 
 			if err := tmpl.Execute(&out, templateParams); err != nil {
-				log.WithField("path", path).Error("failed to process template")
+				log.WithError(err).WithField("path", path).Error("failed to process template")
 				return nil, ErrTemplateProcessingFailed
 			}
 
