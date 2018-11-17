@@ -7,12 +7,9 @@ const addBlob = (state, attrs) => {
 }
 
 const reducer = (state = [], action) => {
-  switch (action.type) {
-    case NEW_BLOB:
-      return addBlob(state, action);
-    default:
-      return state;
-  };
+  if (action.type === NEW_BLOB) {
+    return addBlob(state, action);
+  }
 
   return state;
 };
