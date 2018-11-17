@@ -8,13 +8,10 @@ import { MuiThemeProvider, getMuiTheme } from 'material-ui/styles';
 import {
   fullBlack,
   white,
-  purple500,
   grey800,
   deepPurple700,
   deepPurpleA700,
   deepPurpleA200,
-  deepPurple500,
-  deepPurple300,
   deepPurple200,
   deepPurple100
 } from 'material-ui/styles/colors'
