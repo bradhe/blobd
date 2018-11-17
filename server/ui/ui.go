@@ -1,4 +1,4 @@
-//go:generate npm run-script build
+//go:generate bash ./build.sh
 //go:generate go-bindata -pkg=ui -prefix=build -o=ui.gen.go -ignore=\.swp ./build/...
 package ui
 
@@ -49,7 +49,7 @@ func (a *assetHandler) getAsset(path string) ([]byte, error) {
 	a.mut.RLock()
 
 	if asset, ok := a.cache[path]; ok {
-		log.WithField("path", path).Debugf("asset cache hit")
+		log.WithField("path", path).Debug("asset cache hit")
 		a.mut.RUnlock()
 		return asset, nil
 	}
@@ -60,14 +60,14 @@ func (a *assetHandler) getAsset(path string) ([]byte, error) {
 	// Check again just in case the asset was loaded while we were waiting for
 	// the lock.
 	if asset, ok := a.cache[path]; ok {
-		log.WithField("path", path).Debugf("latent asset cache hit")
+		log.WithField("path", path).Debug("latent asset cache hit")
 		a.mut.Unlock()
 		return asset, nil
 	}
 
 	defer a.mut.Unlock()
 
-	log.WithField("path", path).Debugf("compiling asset")
+	log.WithField("path", path).Debug("compiling asset")
 
 	// Now we can actually load the asset.
 	var templateParams struct {
@@ -109,7 +109,7 @@ func processAssetError(err error) (string, []byte, error) {
 }
 
 func (a *assetHandler) AssetFromPath(path string) (string, []byte, error) {
-	log.WithField("path", path).Debugf("looking up asset")
+	log.WithField("path", path).Debug("looking up asset")
 
 	path = strings.TrimPrefix(path, a.Options.Prefix)
 

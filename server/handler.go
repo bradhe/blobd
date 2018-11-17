@@ -183,8 +183,11 @@ func (h *blobHandler) DownloadBlob(w http.ResponseWriter, r *http.Request) {
 	manager := h.Managers.Blobs()
 
 	if blob, err := manager.Get(h.RequestedBlobId); err != nil {
-		log.WithError(err).Error("failed to get blob")
-		RenderError(w, GetError("internal_server_error"))
+		if err == managers.ErrNotFound {
+			RenderError(w, GetError("not_found"))
+		} else {
+			RenderError(w, GetError("internal_server_error"))
+		}
 	} else {
 		w.Header().Set("Content-Type", string(h.Claims.MediaType))
 		w.Header().Set("Content-Disposition", "attachment")

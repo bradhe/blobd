@@ -10,6 +10,7 @@ import (
 type Managers struct {
 	ctx context.Context
 
+	// region for putting content
 	region string
 
 	// bucket to read content from
@@ -22,6 +23,7 @@ type Managers struct {
 func (m *Managers) Blobs() managers.BlobManager {
 	return &BlobManager{
 		ctx:    m.ctx,
+		table:  "BlobsTableName",
 		region: m.region,
 		bucket: m.bucket,
 		prefix: m.prefix,

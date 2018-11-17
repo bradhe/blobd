@@ -12,7 +12,7 @@ import (
 
 func TestServingAssets(t *testing.T) {
 	t.Run("with user defined prefix", func(t *testing.T) {
-		h := Handler("/my-prefix/")
+		h := Handler(HandlerOptions{Prefix: "/my-prefix/"})
 
 		r := httptest.NewRequest("GET", "/my-prefix/index.html", nil)
 		w := httptest.NewRecorder()
@@ -22,7 +22,7 @@ func TestServingAssets(t *testing.T) {
 	})
 
 	t.Run("with alternate prefix", func(t *testing.T) {
-		h := Handler("/my-other-prefix")
+		h := Handler(HandlerOptions{Prefix: "/my-other-prefix"})
 
 		r := httptest.NewRequest("GET", "/my-other-prefix/index.html", nil)
 		w := httptest.NewRecorder()
@@ -32,7 +32,7 @@ func TestServingAssets(t *testing.T) {
 	})
 
 	t.Run("with default path", func(t *testing.T) {
-		h := Handler("/my-other-prefix")
+		h := Handler(HandlerOptions{Prefix: "/my-other-prefix"})
 
 		r := httptest.NewRequest("GET", "/my-other-prefix/", nil)
 		w := httptest.NewRecorder()
@@ -42,7 +42,7 @@ func TestServingAssets(t *testing.T) {
 	})
 
 	t.Run("with missing asset", func(t *testing.T) {
-		h := Handler("/my-other-prefix")
+		h := Handler(HandlerOptions{Prefix: "/my-other-prefix"})
 
 		r := httptest.NewRequest("GET", "/my-other-prefix/some-dumb-asset.html", nil)
 		w := httptest.NewRecorder()
@@ -54,7 +54,7 @@ func TestServingAssets(t *testing.T) {
 
 func TestMethodsNotAllowed(t *testing.T) {
 	t.Run("with POST", func(t *testing.T) {
-		h := Handler("/my-prefix/")
+		h := Handler(HandlerOptions{Prefix: "/my-prefix/"})
 
 		r := httptest.NewRequest("POST", "/my-prefix/index.html", nil)
 		w := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestMethodsNotAllowed(t *testing.T) {
 	})
 
 	t.Run("with PUT", func(t *testing.T) {
-		h := Handler("/my-prefix/")
+		h := Handler(HandlerOptions{Prefix: "/my-prefix/"})
 
 		r := httptest.NewRequest("PUT", "/my-prefix/index.html", nil)
 		w := httptest.NewRecorder()
@@ -74,7 +74,7 @@ func TestMethodsNotAllowed(t *testing.T) {
 	})
 
 	t.Run("with DELETE", func(t *testing.T) {
-		h := Handler("/my-prefix/")
+		h := Handler(HandlerOptions{Prefix: "/my-prefix/"})
 
 		r := httptest.NewRequest("DELETE", "/my-prefix/index.html", nil)
 		w := httptest.NewRecorder()

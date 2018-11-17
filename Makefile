@@ -1,30 +1,36 @@
 GO 			 ?= /usr/local/go/bin/go
-GOVENDOR ?= $(GOPATH)/bin/govendor
 DOCKER 	 ?= docker
+DEP			 ?= $(GOPATH)/bin/dep
 
 IMAGE_REPO ?= bradhe
 IMAGE_NAME  = blobd
 IMAGE_TAG  ?= latest
+IMAGEPATH		= $(IMAGE_REPO)/$(IMAGE_NAME):$(IMAGE_TAG)
+
+BINDIR 	= .
+BINNAME = blobd
+BINPATH	= $(BINDIR)/$(BINNAME)
 
 setup:
-	go get -v github.com/kardianos/govendor
+	@if [ ! -f $(DEP) ]; then echo "Install godep https://github.com/golang/dep"; exit 1; fi
 
 clean:
-	rm ./cmd/blobd/blobd
+	rm -rf ./blobd
 
-build:
+generate:
 	$(GO) generate ./...
-	$(GO) build -o ./blobd ./cmd/blobd
 
-build_linux:
-	GOOS=linux GOARCH=amd64 $(GO) build -o ./cmd/blobd/blobd ./cmd/blobd
+build: generate
+	$(GO) build -o $(BINPATH) ./cmd/blobd
 
-test: build
-	$(GOVENDOR) test -tags 'integration unit' ./...	
+build_linux: generate
+	GOOS=linux GOARCH=amd64 $(GO) build -o $(BINPATH) ./cmd/blobd
+
+test: generate
+	$(GO) test -tags 'integration unit' ./...	
 
 images: build_linux
-	$(DOCKER) build -t $(IMAGE_REPO)/$(IMAGE_NAME):$(IMAGE_TAG) ./cmd/blobd
+	$(DOCKER) build -t $(IMAGEPATH) .
 
 release: images
-	$(DOCKER) push $(IMAGE_REPO)/$(IMAGE_NAME):$(IMAGE_TAG)
-
+	$(DOCKER) push $(IMAGEPATH)

@@ -9,3 +9,4 @@
 /cmd/blobd/blobd
 /server/ui/ui.gen.go
 /server/ui/build/
+/server/ui/.blobd.last-build.checksum

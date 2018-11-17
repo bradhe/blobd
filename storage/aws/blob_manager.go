@@ -2,10 +2,13 @@ package aws
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	baseaws "github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 
@@ -16,6 +19,7 @@ import (
 
 type BlobManager struct {
 	ctx    context.Context
+	table  string
 	region string
 	bucket string
 	prefix string
@@ -86,7 +90,68 @@ func (bm *BlobManager) upload(blob *blobs.Blob) error {
 	return err
 }
 
+func parseIntAttribute(name string, out *dynamodb.UpdateItemOutput) int {
+	if out == nil {
+		return 0
+	}
+
+	if attr, ok := out.Attributes[name]; ok {
+		if attr.N == nil {
+			return 0
+		}
+
+		i, _ := strconv.Atoi(*attr.N)
+		return i
+	} else {
+		return 0
+	}
+}
+
+func getTTL() string {
+	return fmt.Sprintf("%d", blobs.MaxExpirationFromNow().Unix())
+}
+
+func newUpdateItemInput(tableName string, id blobs.Id) *dynamodb.UpdateItemInput {
+	return &dynamodb.UpdateItemInput{
+		TableName: baseaws.String(tableName),
+		Key: map[string]*dynamodb.AttributeValue{
+			"BlobId": {
+				S: baseaws.String(id.String()),
+			},
+		},
+		UpdateExpression: baseaws.String("SET TotalReads = if_not_exists(TotalReads, :zero) + :inc, BlobTTL = if_not_exists(BlobTTL, :ttl)"),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":inc":  {N: baseaws.String("1")},
+			":zero": {N: baseaws.String("0")},
+			":ttl":  {N: baseaws.String(getTTL())},
+		},
+		ReturnValues: baseaws.String("UPDATED_NEW"),
+	}
+}
+
+func (bm *BlobManager) isDownloadable(id blobs.Id) (bool, error) {
+	sess := newAWSSession()
+	svc := dynamodb.New(sess)
+
+	if out, err := svc.UpdateItem(newUpdateItemInput(bm.table, id)); err != nil {
+		log.WithError(err).Error("UpdateItem failed")
+		return false, err
+	} else {
+		if parseIntAttribute("TotalReads", out) > 1 {
+			return false, nil
+		}
+
+		return true, nil
+	}
+}
+
 func (bm *BlobManager) Get(id blobs.Id) (*blobs.Blob, error) {
+	if ok, err := bm.isDownloadable(id); err != nil {
+		return nil, err
+	} else if !ok {
+		return nil, managers.ErrNotFound
+	}
+
 	blob := blobs.Blob{
 		Id: id,
 	}
