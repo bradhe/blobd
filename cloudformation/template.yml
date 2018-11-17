@@ -6,18 +6,239 @@ Parameters:
     Type: String
     Default: "development"
 
-Outputs:
+  VPCCidrBlock:
+    Description: The environment for this stack.
+    Type: String
+    Default: "10.0.0.0/16"
 
-Conditions:
+  PublicSubnet1CidrBlock:
+    Description: The environment for this stack.
+    Type: String
+    Default: "10.0.11.0/24"
+
+  PublicSubnet2CidrBlock:
+    Description: The environment for this stack.
+    Type: String
+    Default: "10.0.12.0/24"
+
+  PrivateSubnet1CidrBlock:
+    Description: The environment for this stack.
+    Type: String
+    Default: "10.0.21.0/24"
+
+  PrivateSubnet2CidrBlock:
+    Description: The environment for this stack.
+    Type: String
+    Default: "10.0.22.0/24"
 
 Resources:
+
+  #
+  # Network
+  #
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCidrBlock
+      Tags: 
+        - Key: Name
+          Value: blobd VPC
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: blobd Internet Gateway
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  PublicSubnet1: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet1CidrBlock
+      MapPublicIpOnLaunch: true
+      Tags: 
+        - Key: Name 
+          Value: blobd Public Subnet (AZ1)
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  PublicSubnet2: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PublicSubnet2CidrBlock
+      MapPublicIpOnLaunch: true
+      Tags: 
+      - Key: Name 
+        Value: blobd Public Subnet (AZ2)
+      - Key: Environment
+        Value: !Ref Environment
+      - Key: Stack-Type
+        Value: blobd
+
+  PrivateSubnet1: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet1CidrBlock
+      MapPublicIpOnLaunch: false
+      Tags: 
+      - Key: Name 
+        Value: blobd Private Subnet (AZ1)
+      - Key: Environment
+        Value: !Ref Environment
+      - Key: Stack-Type
+        Value: blobd
+
+  PrivateSubnet2: 
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: !Ref PrivateSubnet2CidrBlock
+      MapPublicIpOnLaunch: false
+      Tags: 
+      - Key: Name 
+        Value: blobd Private Subnet (AZ2)
+      - Key: Environment
+        Value: !Ref Environment
+      - Key: Stack-Type
+        Value: blobd
+
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties: 
+      Domain: vpc
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway1: 
+    Type: AWS::EC2::NatGateway
+    Properties: 
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+
+  NatGateway2: 
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Name 
+          Value: blobd Public Routes
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  DefaultPublicRoute: 
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties: 
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Name 
+          Value: blobd Private Routes (AZ1)
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties: 
+      VpcId: !Ref VPC
+      Tags: 
+        - Key: Name 
+          Value: blobd Private Routes (AZ2)
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
 
   #
   # DyanmoDB Tables
   #
   BlobsTable:
+    DependsOn: BlobsBucket
     Type: "AWS::DynamoDB::Table"
     Properties:
+      TableName: !Ref BlobsBucket
       AttributeDefinitions:
         - AttributeName: BlobID
           AttributeType: S
@@ -36,7 +257,7 @@ Resources:
   #
   # S3 buckets
   #
-  BlobBucket:
+  BlobsBucket:
     Type: "AWS::S3::Bucket"
     Properties: 
       Tags:
@@ -62,8 +283,8 @@ Resources:
               - "s3:AbortMultipartUpload"
               - "s3:ListMultipartUploadParts"
             Resource:
-              - !Sub ["${BucketArn}/*", {"BucketArn": !GetAtt ["BlobBucket", "Arn"]}]
-              - !GetAtt ["BlobBucket", "Arn"]
+              - !Sub ["${BucketArn}/*", {"BucketArn": !GetAtt ["BlobsBucket", "Arn"]}]
+              - !GetAtt ["BlobsBucket", "Arn"]
           - Effect: Allow
             Action:
               - "dynamodb:UpdateItem"
@@ -129,7 +350,7 @@ Resources:
         FromPort: 5001
         ToPort: 5001
         SourceSecurityGroupId: !GetAtt ["LoadBalancerSecurityGroup", "GroupId"]
-      VpcId: !Ref VPCID
+      VpcId: !Ref VPC
       Tags:
         - Key: Environment
           Value: !Ref Environment
@@ -142,7 +363,7 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       Cpu: 256
-      Family: frontend
+      Family: Service
       Memory: 0.5GB
       NetworkMode: awsvpc
       ExecutionRoleArn: !Ref FargateServiceRole
@@ -153,7 +374,7 @@ Resources:
           Command:
             - "/blobd"
             - "-listen-addr=0.0.0.0:5001"
-            - !Sub "-storage-url=s3://${BlobBucket}/${Environment}/temp"
+            - !Sub "-storage-url=s3://${BlobsBucket}/${Environment}/temp"
             - !Sub "-metadata-url=dynamodb://${BlobsTable}"
           PortMappings:
             - ContainerPort: 5001
@@ -168,9 +389,9 @@ Resources:
   ServiceCluster:
     Type: "AWS::ECS::Cluster"
 
-  FrontendService:
+  ServiceService:
     Type: AWS::ECS::Service
-    DependsOn: FrontendLoadBalancer
+    DependsOn: ServiceLoadBalancer
     Properties:
       Cluster: !Ref ServiceCluster
       LaunchType: FARGATE
@@ -183,7 +404,9 @@ Resources:
           AssignPublicIp: ENABLED
           SecurityGroups:
             - !Ref ServiceSecurityGroup
-          Subnets: !Ref SubnetIDs
+          Subnets:
+            - !Ref PrivateSubnet1
+            - !Ref PrivateSubnet2
       TaskDefinition: !Ref ServiceTaskDefinition
       LoadBalancers:
         - ContainerName: blobd
@@ -194,7 +417,7 @@ Resources:
     Type: AWS::EC2::SecurityGroup
     Properties:
       GroupDescription: !Sub "Allows inbound traffic from the Internet to ${AWS::StackName}."
-      VpcId: !Ref VPCID
+      VpcId: !Ref VPC
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: 80
@@ -209,7 +432,9 @@ Resources:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties:
       Scheme: internet-facing
-      Subnets: !Ref SubnetIDs
+      Subnets:
+        - !Ref PublicSubnet1
+        - !Ref PublicSubnet2
       SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
       Type: application
@@ -231,7 +456,7 @@ Resources:
       Port: 80
       Protocol: HTTP
       UnhealthyThresholdCount: 2
-      VpcId: !Ref VPCID
+      VpcId: !Ref VPC
 
   ServiceHTTPLoadBalancerListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
@@ -243,12 +468,12 @@ Resources:
       Port: 80
       Protocol: HTTP
 
-  ServiceHTTPSLoadBalancerListener:
-    Type: AWS::ElasticLoadBalancingV2::Listener
-    Properties:
-      DefaultActions:
-        - Type: forward
-          TargetGroupArn: !Ref ServiceTargetGroup
-      LoadBalancerArn: !Ref ServiceLoadBalancer
-      Port: 443
-      Protocol: HTTPS
+      #  ServiceHTTPSLoadBalancerListener:
+      #    Type: AWS::ElasticLoadBalancingV2::Listener
+      #    Properties:
+      #      DefaultActions:
+      #        - Type: forward
+      #          TargetGroupArn: !Ref ServiceTargetGroup
+      #      LoadBalancerArn: !Ref ServiceLoadBalancer
+      #      Port: 443
+      #      Protocol: HTTPS
