@@ -36,3 +36,6 @@ images: build_linux
 
 release: images
 	$(DOCKER) push $(IMAGEPATH)
+
+serve: build
+	docker-compose up --build
