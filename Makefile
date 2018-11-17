@@ -15,6 +15,8 @@ setup:
 	@if [ ! -f $(DEP) ]; then echo "Install godep https://github.com/golang/dep"; exit 1; fi
 
 clean:
+	rm -rf ./server/ui/build
+	rm -rf ./server/ui/.blobd.last-build.checksum
 	rm -rf ./blobd
 
 generate:
