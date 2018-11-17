@@ -1,0 +1,254 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cloudformation template for deploying your own Blobd service.
+Parameters:
+  Environment:
+    Description: The environment for this stack.
+    Type: String
+    Default: "development"
+
+Outputs:
+
+Conditions:
+
+Resources:
+
+  #
+  # DyanmoDB Tables
+  #
+  BlobsTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: BlobID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: BlobID
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 3
+        WriteCapacityUnits: 3
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  #
+  # S3 buckets
+  #
+  BlobBucket:
+    Type: "AWS::S3::Bucket"
+    Properties: 
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  #
+  # Access controls
+  #
+  Policy:
+    Type: "AWS::IAM::ManagedPolicy"
+    Properties:
+      Description: Allows access to the various resources for this service.
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - "s3:GetObject"
+              - "s3:PutObject"
+              - "s3:AbortMultipartUpload"
+              - "s3:ListMultipartUploadParts"
+            Resource:
+              - !Sub ["${BucketArn}/*", {"BucketArn": !GetAtt ["BlobBucket", "Arn"]}]
+              - !GetAtt ["BlobBucket", "Arn"]
+          - Effect: Allow
+            Action:
+              - "dynamodb:UpdateItem"
+            Resource:
+              - !GetAtt BlobsTable.Arn
+
+  #
+  # Services
+  #
+  ECSServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action: ['elasticloadbalancing:DeregisterInstancesFromLoadBalancer', 'elasticloadbalancing:DeregisterTargets', 'elasticloadbalancing:Describe*', 'elasticloadbalancing:RegisterInstancesWithLoadBalancer', 'elasticloadbalancing:RegisterTargets', 'ec2:Describe*', 'ec2:AuthorizeSecurityGroupIngress']
+            Resource: '*'
+
+  FargateServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'ecs:*'
+
+                # Allow the ECS tasks to upload logs to CloudWatch
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'
+
+  CloudwatchLogsGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Join ['-', [ECSLogGroup, !Ref 'AWS::StackName']]
+      RetentionInDays: 14
+
+  ServiceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Security group for ingress to the service containers"
+      SecurityGroupIngress:
+        IpProtocol: TCP
+        FromPort: 5001
+        ToPort: 5001
+        SourceSecurityGroupId: !GetAtt ["LoadBalancerSecurityGroup", "GroupId"]
+      VpcId: !Ref VPCID
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  ServiceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: 256
+      Family: frontend
+      Memory: 0.5GB
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !Ref FargateServiceRole
+      ContainerDefinitions:
+        - Name: blobd
+          Essential: true
+          Image: "bradhe/blobd:latest"
+          Command:
+            - "/blobd"
+            - "-listen-addr=0.0.0.0:5001"
+            - !Sub "-storage-url=s3://${BlobBucket}/${Environment}/temp"
+            - !Sub "-metadata-url=dynamodb://${BlobsTable}"
+          PortMappings:
+            - ContainerPort: 5001
+              HostPort: 5001
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref 'CloudwatchLogsGroup'
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: blobd
+
+  ServiceCluster:
+    Type: "AWS::ECS::Cluster"
+
+  FrontendService:
+    Type: AWS::ECS::Service
+    DependsOn: FrontendLoadBalancer
+    Properties:
+      Cluster: !Ref ServiceCluster
+      LaunchType: FARGATE
+      DeploymentConfiguration:
+        MaximumPercent: 200
+      DesiredCount: 1
+      #Role: !Ref ECSServiceRole
+      NetworkConfiguration:
+        AwsvpcConfiguration: 
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+            - !Ref ServiceSecurityGroup
+          Subnets: !Ref SubnetIDs
+      TaskDefinition: !Ref ServiceTaskDefinition
+      LoadBalancers:
+        - ContainerName: blobd
+          ContainerPort: 5001
+          TargetGroupArn: !Ref ServiceTargetGroup
+
+  LoadBalancerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub "Allows inbound traffic from the Internet to ${AWS::StackName}."
+      VpcId: !Ref VPCID
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  ServiceLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Scheme: internet-facing
+      Subnets: !Ref SubnetIDs
+      SecurityGroups:
+        - !Ref LoadBalancerSecurityGroup
+      Type: application
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Stack-Type
+          Value: blobd
+
+  ServiceTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 6
+      HealthCheckPath: /_status
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      TargetType: ip
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2
+      VpcId: !Ref VPCID
+
+  ServiceHTTPLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ServiceTargetGroup
+      LoadBalancerArn: !Ref ServiceLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ServiceHTTPSLoadBalancerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ServiceTargetGroup
+      LoadBalancerArn: !Ref ServiceLoadBalancer
+      Port: 443
+      Protocol: HTTPS
