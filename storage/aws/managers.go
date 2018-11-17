@@ -23,10 +23,13 @@ type Managers struct {
 func (m *Managers) Blobs() managers.BlobManager {
 	return &BlobManager{
 		ctx:    m.ctx,
-		table:  "BlobsTableName",
 		region: m.region,
-		bucket: m.bucket,
 		prefix: m.prefix,
+
+		// There is a documented requirement that the table get it's name from the
+		// bucket.
+		table:  m.bucket,
+		bucket: m.bucket,
 	}
 }
 

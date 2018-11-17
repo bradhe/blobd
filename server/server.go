@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"net/http"
-	"net/url"
 
 	"github.com/bradhe/stopwatch"
 	"github.com/gorilla/mux"
@@ -12,10 +11,6 @@ import (
 	"github.com/bradhe/blobd/storage"
 	"github.com/bradhe/blobd/storage/managers"
 )
-
-type ServerOptions struct {
-	StorageURL *url.URL
-}
 
 type Server struct {
 	Managers managers.Managers
