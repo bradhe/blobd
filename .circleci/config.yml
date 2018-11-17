@@ -7,6 +7,7 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
+      - run: go get -u github.com/jteeuwen/go-bindata/...
       - run: cd ./server/ui && npm install
       - run: make test
       - deploy:
