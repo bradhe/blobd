@@ -10,6 +10,8 @@ const reducer = (state = [], action) => {
   switch (action.type) {
     case NEW_BLOB:
       return addBlob(state, action);
+    default:
+      return state;
   };
 
   return state;
