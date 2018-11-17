@@ -45,6 +45,10 @@ func getBlobdHostTagTemplate(blobdHost string) string {
 	return fmt.Sprintf(`<script>window.BLOBD_HOST = "%s";</script>`, blobdHost)
 }
 
+func isTemplate(path string) bool {
+	return strings.HasSuffix(path, ".html")
+}
+
 func (a *assetHandler) getAsset(path string) ([]byte, error) {
 	a.mut.RLock()
 
@@ -77,18 +81,25 @@ func (a *assetHandler) getAsset(path string) ([]byte, error) {
 	templateParams.BlobdHostTag = getBlobdHostTagTemplate(a.Options.BlobdHost)
 
 	if buf, err := Asset(path); err == nil {
-		if tmpl, err := template.New(path).Parse(string(buf)); err != nil {
-			log.WithError(err).WithField("path", path).Error("failed to instantiate template")
-			return nil, ErrTemplateParsingFailed
-		} else {
-			var out bytes.Buffer
+		if isTemplate(path) {
+			if tmpl, err := template.New(path).Parse(string(buf)); err != nil {
+				log.WithError(err).WithField("path", path).Error("failed to instantiate template")
+				return nil, ErrTemplateParsingFailed
+			} else {
+				var out bytes.Buffer
 
-			if err := tmpl.Execute(&out, templateParams); err != nil {
-				log.WithError(err).WithField("path", path).Error("failed to process template")
-				return nil, ErrTemplateProcessingFailed
+				if err := tmpl.Execute(&out, templateParams); err != nil {
+					log.WithError(err).WithField("path", path).Error("failed to process template")
+					return nil, ErrTemplateProcessingFailed
+				}
+
+				a.cache[path] = out.Bytes()
+				return a.cache[path], nil
 			}
-
-			a.cache[path] = out.Bytes()
+		} else {
+			// This file shouldn't be processed as a template, therefore we'll just
+			// return the thing directly.
+			a.cache[path] = buf
 			return a.cache[path], nil
 		}
 	} else {
@@ -119,7 +130,7 @@ func (a *assetHandler) AssetFromPath(path string) (string, []byte, error) {
 
 	// special-case for serving our default asset
 	if path == "" {
-		return defaultAssetName, defaultAsset, nil
+		path = defaultAssetName
 	}
 
 	if asset, err := a.getAsset(path); err != nil {
