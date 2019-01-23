@@ -96,8 +96,6 @@ class BlobList extends Component {
 }
 
 const mapStateToProps = (state, ownProps) => {
-  console.log('state', state);
-
   return {
     uploads: state.uploads,
     blobs: state.blobs,
