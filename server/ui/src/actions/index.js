@@ -12,6 +12,10 @@ import {
 
 const NAMESPACE = '9cf62dae-39db-4df7-8408-8eadab53dc01'
 
+const getHost = () => 'localhost:5001';
+
+const getScheme = () => 'http';
+
 export function upload (file) {
   return dispatch => {
     const id = uuid(file.name, NAMESPACE);
@@ -36,6 +40,7 @@ export function upload (file) {
 
 export function copyLink(blob) {
   return dispatch => {
-    console.log('copying link', blob);
+    const url = `${getScheme()}://${getHost()}/${blob.id}?token=${blob.read_jwt}&dl=1`;
+    console.log(url);
   };
 };

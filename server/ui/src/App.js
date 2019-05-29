@@ -17,8 +17,8 @@ import {
 } from 'material-ui/styles/colors'
 
 class App extends Component {
-  constructor(properties, context) {
-    super(properties, context);
+  constructor(props, context) {
+    super(props, context);
 
     this.muiTheme = getMuiTheme({
       fontFamily: 'Montserrat',
@@ -38,7 +38,7 @@ class App extends Component {
 	clockCircleColor: deepPurpleA200,
 	shadowColor: fullBlack,
       },
-      userAgent: properties.userAgent
+      userAgent: props.userAgent
     });
   }
 

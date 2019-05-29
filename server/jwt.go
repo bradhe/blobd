@@ -141,6 +141,8 @@ func GenerateJWT(t TokenType, key *crypt.Key, blob *blobs.Blob) string {
 func ParseJWT(authorization string) (*jwt.Token, *BlobClaims, error) {
 	str := GetJWT(authorization)
 
+	log.WithField("auth", authorization).Debugf("parsing tokens")
+
 	token, err := jwt.ParseWithClaims(str, &BlobClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("server: unexpected signing method `%v`", token.Header["alg"])

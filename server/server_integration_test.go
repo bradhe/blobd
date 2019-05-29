@@ -6,6 +6,9 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -26,12 +29,13 @@ func randomBlob(size int) []byte {
 	return blob
 }
 
-func AssertGet(t *testing.T, s *server.Server, path string) {
+func AssertGet(t *testing.T, s *server.Server, path string) io.ReadCloser {
 	r := httptest.NewRequest("GET", path, nil)
 	w := httptest.NewRecorder()
 
 	s.ServeHTTP(w, r)
 	assert.Equal(t, http.StatusOK, w.Code)
+	return ioutil.NopCloser(w.Body)
 }
 
 func AssertOptions(t *testing.T, s *server.Server, path string) {
@@ -222,4 +226,16 @@ func TestServingUI(t *testing.T) {
 	AssertGetNotFound(t, s, "/ui/something-is-not-right.html")
 	AssertPutNotAllowed(t, s, "/ui/")
 	AssertOptions(t, s, "/")
+}
+
+func TestBrowserDownloading(t *testing.T) {
+	s := server.New(server.ServerOptions{})
+	content := randomBlob(2048)
+
+	blob := AssertCreateBlob(t, s, content)
+	resp := AssertGet(t, s, fmt.Sprintf("/%s?token=%s&dl=1", blob.Id, blob.ReadOnlyJWT))
+
+	// makes sure we actually get the content of our original blob back.
+	body, _ := ioutil.ReadAll(resp)
+	assert.Equal(t, body, content)
 }

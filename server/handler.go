@@ -138,20 +138,28 @@ func isDownloadRequest(r *http.Request) bool {
 
 func (h *blobHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if isDownloadRequest(r) {
+		log.Debug("performing browser-based download")
+
 		h.withAuthenticatedDownloadRequest(w, r, func(claims *BlobClaims, w http.ResponseWriter, r *http.Request) {
 			if claims.IsReadable() {
 				h.DownloadBlob(w, r)
 			} else {
+				log.Warn("invalid claims")
+
 				RenderError(w, GetError("unauthorized"))
 			}
 		})
 	} else {
+		log.Debug("performing programmatic download")
+
 		h.withAuthenticatedHeaderRequest(w, r, func(claims *BlobClaims, w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
 			case "GET":
 				if claims.IsReadable() {
 					h.GetBlob(w, r)
 				} else {
+					log.Warn("invalid claims")
+
 					RenderError(w, GetError("unauthorized"))
 				}
 			case "PUT":
