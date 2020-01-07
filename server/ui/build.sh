@@ -1,6 +1,6 @@
 #!/bin/bash
 
-MD5SUM=/usr/bin/md5sum
+MD5SUM=`which md5sum`
 TARGETS="./src/ ./public/ ./package.json"
 
 CHECKSUM_FILE=./.blobd.last-build.checksum
